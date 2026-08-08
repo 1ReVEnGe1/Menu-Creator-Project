@@ -1,0 +1,259 @@
+"use client";
+
+import PackageFormComp, {
+  IPackageInitialData,
+} from "@/components/Dashboard/PackageForm/PackageFormComp";
+import { useState, useEffect } from "react";
+
+interface PackagesPageCompProps {
+  userPermissions: string[];
+}
+
+export default function PackagesPageComp({
+  userPermissions,
+}: PackagesPageCompProps) {
+  const [packages, setPackages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // وضعیت‌های مدال و کامپوننت فرم
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [selectedPackage, setSelectedPackage] = useState<
+    IPackageInitialData | undefined
+  >(undefined);
+
+  useEffect(() => {
+    fetchPackages();
+  }, []);
+
+  const fetchPackages = async () => {
+    try {
+      const res = await fetch("/api/private/packages");
+      const data = await res.json();
+      if (data.success) setPackages(data.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenCreateModal = () => {
+    setFormMode("create");
+    setSelectedPackage(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (pkg: any) => {
+    setFormMode("edit");
+    setSelectedPackage({
+      _id: pkg._id,
+      title: pkg.title,
+      slug: pkg.slug,
+      category: pkg.category,
+      menus: pkg.menus || [],
+    });
+    setIsModalOpen(true);
+  };
+
+  // تابع حذف پکیج به همراه منوهای زیرمجموعه
+  const handleDeletePackage = async (id: string, title: string) => {
+    const confirmDelete = window.confirm(
+      `آیا از حذف پکیج «${title}» و تمامی منوهای زیرمجموعه آن اطمینان دارید؟ این عمل قابل بازگشت نیست.`,
+    );
+
+    if (!confirmDelete) return;
+
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/private/packages/delete-package/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setPackages((prev) => prev.filter((pkg) => pkg._id !== id));
+      } else {
+        alert(data.message || "خطا در حذف پکیج");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("خطایی در ارتباط با سرور رخ داد.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  return (
+    <div
+      className="p-8 dir-rtl text-right min-h-screen bg-slate-50 text-slate-800"
+      dir="rtl"
+    >
+      {/* هدر صفحه */}
+      <div className="flex justify-between items-center bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            پکیج‌های تشریفات بارمن
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            مدیریت پکیج‌ها و منوهای اختصاصی خدمات
+          </p>
+        </div>
+        {userPermissions.includes("packages:write") ? (
+          <button
+            onClick={handleOpenCreateModal}
+            className="px-6 py-3 rounded-2xl text-white shadow-lg hover:shadow-xl hover:opacity-95 transition-all flex items-center gap-2"
+            style={{ backgroundColor: "#85004E" }}
+          >
+            <span className="text-xl leading-none">+</span>
+            <span>افزودن پکیج جدید</span>
+          </button>
+        ) : null}
+      </div>
+
+      {/* لیست پکیج‌ها */}
+      {loading ? (
+        <div className="text-center py-20 text-slate-400">
+          در حال بارگذاری پکیج‌ها...
+        </div>
+      ) : packages.length === 0 ? (
+        <div className="bg-white p-16 text-center rounded-3xl border border-dashed border-slate-300 text-slate-400">
+          هنوز هیچ پکیجی ثبت نشده است. روی «افزودن پکیج جدید» کلیک کنید.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {packages.map((pkg) => (
+            <div
+              key={pkg._id}
+              className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <span
+                    className="text-xs px-3 py-1 rounded-full font-bold"
+                    style={{ backgroundColor: "#85004E12", color: "#85004E" }}
+                  >
+                    {pkg.category === "general-menu"
+                      ? "پکیج کلی"
+                      : "منوی خدماتی"}
+                  </span>
+                  <span className="text-xs text-slate-400">
+                    {pkg.menus?.length || 0} منو
+                  </span>
+                </div>
+
+                <h2 className="text-xl font-bold text-slate-900 mb-1">
+                  {pkg.title}
+                </h2>
+                {pkg.slug && (
+                  <p
+                    style={{ direction: "ltr" }}
+                    className="text-xs font-mono mb-4 text-left truncate text-blue-700 underline"
+                  >
+                    {process.env.NEXT_PUBLIC_BASE_URL}/{pkg.slug}
+                  </p>
+                )}
+
+                {/* منوهای داخل پکیج */}
+                <div className="space-y-3">
+                  <span className="text-xs text-slate-400">
+                    منوهای این پکیج:
+                  </span>
+                  {pkg.menus?.map((m: any) => (
+                    <div
+                      key={m._id}
+                      className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2"
+                    >
+                      <div className="flex justify-between items-center text-sm font-bold text-slate-700">
+                        <span>{m.title}</span>
+                        <span style={{ color: "#85004E" }}>
+                          {m.price?.toLocaleString("fa-IR")} تومان
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {m.guestCapacity}
+                      </div>
+
+                      {m.items?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {m.items
+                            .slice(0, 4)
+                            .map((item: string, i: number) => (
+                              <span
+                                key={i}
+                                className="bg-white px-2 py-0.5 rounded-lg border border-slate-200 text-[11px] text-slate-600"
+                              >
+                                {item}
+                              </span>
+                            ))}
+                          {m.items.length > 4 && (
+                            <span className="text-[10px] text-slate-400 self-center">
+                              +{m.items.length - 4} مورد دیگر
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* اکشن‌های پایین کارت (ویرایش و حذف) */}
+              <div className="mt-6 flex gap-2">
+                {userPermissions.includes("packages:update") ? (
+                  <button
+                    onClick={() => handleOpenEditModal(pkg)}
+                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                  >
+                    ویرایش پکیج
+                  </button>
+                ) : null}
+
+                {userPermissions.includes("packages:delete") ? (
+                  <button
+                    onClick={() => handleDeletePackage(pkg._id, pkg.title)}
+                    disabled={deletingId === pkg._id}
+                    className="px-4 py-2.5 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-sm font-semibold transition-colors disabled:opacity-50"
+                  >
+                    {deletingId === pkg._id ? "..." : "حذف"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* مدال فرم (مشترک برای ایجاد و ویرایش) */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 relative">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="absolute top-6 left-6 w-9 h-9 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center hover:bg-slate-200 transition-colors"
+            >
+              ✕
+            </button>
+
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+              {formMode === "create"
+                ? "ایجاد پکیج و منوهای زیرمجموعه"
+                : `ویرایش ${selectedPackage?.title}`}
+            </h2>
+            <p className="text-xs text-slate-400 mb-6">
+              اطلاعات پکیج را وارد کرده و منوهای مربوط به آن را تنظیم کنید.
+            </p>
+
+            <PackageFormComp
+              mode={formMode}
+              initialData={selectedPackage}
+              onSuccess={fetchPackages}
+              onClose={() => setIsModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

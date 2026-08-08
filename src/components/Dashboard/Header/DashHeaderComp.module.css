@@ -1,0 +1,37 @@
+.dropdown-container{
+    position: relative;
+}
+
+.dropdown-content{
+    display: none;
+}
+.dropdown-content{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 120px;
+    
+    
+}
+.dropdown-content ul{
+    background-color: white;
+    border-radius : 1.2rem;
+    box-shadow: 0 0 20px 0 #eee;
+    margin: 3rem 0 0 0;
+    width: 100%;
+    list-style: none;
+    padding: 0.4rem;
+}
+.dropdown-content li{
+    padding: 0.7rem;
+    border-radius : 1.2rem;
+    cursor: pointer;
+}
+.dropdown-content ul li:hover {
+    background-color: rgba(128, 128, 128, 0.05) ;
+    
+}
+
+.dropdown-container:hover .dropdown-content{
+    display: flex;
+}
