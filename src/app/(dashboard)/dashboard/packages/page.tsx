@@ -10,6 +10,7 @@ const PackagesPage = async () => {
     redirect('/')
   }
 
+
   return (
     <>
 

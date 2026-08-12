@@ -2,8 +2,27 @@
 
 import PackageFormComp, {
   IPackageInitialData,
+  IMenuItem,
 } from "@/components/Dashboard/PackageForm/PackageFormComp";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+
+interface MenuData {
+  _id?: string;
+  title: string;
+  price: string;
+  guestCapacity: string;
+  items: IMenuItem[];
+  description: string;
+}
+
+interface PackageData {
+  _id: string;
+  title: string;
+  slug: string;
+  category: "general-menu" | "sub-services-menu";
+  menus: MenuData[];
+}
 
 interface PackagesPageCompProps {
   userPermissions: string[];
@@ -12,7 +31,7 @@ interface PackagesPageCompProps {
 export default function PackagesPageComp({
   userPermissions,
 }: PackagesPageCompProps) {
-  const [packages, setPackages] = useState<any[]>([]);
+  const [packages, setPackages] = useState<PackageData[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -30,10 +49,18 @@ export default function PackagesPageComp({
   const fetchPackages = async () => {
     try {
       const res = await fetch("/api/private/packages");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(
+          errorData?.message || "خطا در گرفتن پکیج‌ها. دوباره امتحان کنید"
+        );
+      }
       const data = await res.json();
-      if (data.success) setPackages(data.data);
+      setPackages(data.data || []);
     } catch (err) {
-      console.error(err);
+      const errorMessage =
+        err instanceof Error ? err.message : "خطای سرور در دریافت پکیج‌ها";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -45,7 +72,7 @@ export default function PackagesPageComp({
     setIsModalOpen(true);
   };
 
-  const handleOpenEditModal = (pkg: any) => {
+  const handleOpenEditModal = (pkg: PackageData) => {
     setFormMode("edit");
     setSelectedPackage({
       _id: pkg._id,
@@ -60,7 +87,7 @@ export default function PackagesPageComp({
   // تابع حذف پکیج به همراه منوهای زیرمجموعه
   const handleDeletePackage = async (id: string, title: string) => {
     const confirmDelete = window.confirm(
-      `آیا از حذف پکیج «${title}» و تمامی منوهای زیرمجموعه آن اطمینان دارید؟ این عمل قابل بازگشت نیست.`,
+      `آیا از حذف پکیج «${title}» و تمامی منوهای زیرمجموعه آن اطمینان دارید؟ این عمل قابل بازگشت نیست.`
     );
 
     if (!confirmDelete) return;
@@ -74,12 +101,13 @@ export default function PackagesPageComp({
 
       if (res.ok && data.success) {
         setPackages((prev) => prev.filter((pkg) => pkg._id !== id));
+        toast.success("پکیج با موفقیت حذف شد.");
       } else {
-        alert(data.message || "خطا در حذف پکیج");
+        toast.error(data.message || "خطا در حذف پکیج");
       }
     } catch (err) {
       console.error(err);
-      alert("خطایی در ارتباط با سرور رخ داد.");
+      toast.error("خطایی در ارتباط با سرور رخ داد.");
     } finally {
       setDeletingId(null);
     }
@@ -100,25 +128,25 @@ export default function PackagesPageComp({
             مدیریت پکیج‌ها و منوهای اختصاصی خدمات
           </p>
         </div>
-        {userPermissions.includes("packages:write") ? (
+        {userPermissions.includes("packages:write") && (
           <button
             onClick={handleOpenCreateModal}
-            className="px-6 py-3 rounded-2xl text-white shadow-lg hover:shadow-xl hover:opacity-95 transition-all flex items-center gap-2"
+            className="px-6 py-3 rounded-2xl text-white shadow-lg hover:shadow-xl hover:opacity-95 transition-all flex items-center gap-2 text-sm font-bold"
             style={{ backgroundColor: "#85004E" }}
           >
             <span className="text-xl leading-none">+</span>
             <span>افزودن پکیج جدید</span>
           </button>
-        ) : null}
+        )}
       </div>
 
       {/* لیست پکیج‌ها */}
       {loading ? (
-        <div className="text-center py-20 text-slate-400">
+        <div className="text-center py-20 text-slate-400 text-sm">
           در حال بارگذاری پکیج‌ها...
         </div>
       ) : packages.length === 0 ? (
-        <div className="bg-white p-16 text-center rounded-3xl border border-dashed border-slate-300 text-slate-400">
+        <div className="bg-white p-16 text-center rounded-3xl border border-dashed border-slate-300 text-slate-400 text-sm">
           هنوز هیچ پکیجی ثبت نشده است. روی «افزودن پکیج جدید» کلیک کنید.
         </div>
       ) : (
@@ -138,7 +166,7 @@ export default function PackagesPageComp({
                       ? "پکیج کلی"
                       : "منوی خدماتی"}
                   </span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-400 font-medium">
                     {pkg.menus?.length || 0} منو
                   </span>
                 </div>
@@ -157,36 +185,39 @@ export default function PackagesPageComp({
 
                 {/* منوهای داخل پکیج */}
                 <div className="space-y-3">
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-400 block font-medium">
                     منوهای این پکیج:
                   </span>
-                  {pkg.menus?.map((m: any) => (
+                  {pkg.menus?.map((m, index) => (
                     <div
-                      key={m._id}
-                      className="bg-slate-50 p-3 rounded-2xl border border-slate-100 space-y-2"
+                      key={m._id || index}
+                      className="bg-slate-50 p-3.5 rounded-2xl border border-slate-100 space-y-2"
                     >
                       <div className="flex justify-between items-center text-sm font-bold text-slate-700">
                         <span>{m.title}</span>
                         <span style={{ color: "#85004E" }}>
-                          {m.price?.toLocaleString("fa-IR")} تومان
+                          {m.price}
                         </span>
                       </div>
                       <div className="text-xs text-slate-400">
                         {m.guestCapacity}
                       </div>
 
+                      {/* نمایش آیتم‌های منو (شیء شامل عنوان و توضیحات) */}
                       {m.items?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {m.items
-                            .slice(0, 4)
-                            .map((item: string, i: number) => (
-                              <span
-                                key={i}
-                                className="bg-white px-2 py-0.5 rounded-lg border border-slate-200 text-[11px] text-slate-600"
-                              >
-                                {item}
-                              </span>
-                            ))}
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {m.items.slice(0, 4).map((item, i) => (
+                            <span
+                              key={i}
+                              title={item.description || undefined}
+                              className="bg-white px-2 py-1 rounded-lg border border-slate-200 text-[11px] text-slate-600 flex items-center gap-1"
+                            >
+                              <span>{item.title}</span>
+                              {item.description && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="دارای توضیحات" />
+                              )}
+                            </span>
+                          ))}
                           {m.items.length > 4 && (
                             <span className="text-[10px] text-slate-400 self-center">
                               +{m.items.length - 4} مورد دیگر
@@ -201,16 +232,16 @@ export default function PackagesPageComp({
 
               {/* اکشن‌های پایین کارت (ویرایش و حذف) */}
               <div className="mt-6 flex gap-2">
-                {userPermissions.includes("packages:update") ? (
+                {userPermissions.includes("packages:update") && (
                   <button
                     onClick={() => handleOpenEditModal(pkg)}
                     className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
                   >
                     ویرایش پکیج
                   </button>
-                ) : null}
+                )}
 
-                {userPermissions.includes("packages:delete") ? (
+                {userPermissions.includes("packages:delete") && (
                   <button
                     onClick={() => handleDeletePackage(pkg._id, pkg.title)}
                     disabled={deletingId === pkg._id}
@@ -218,7 +249,7 @@ export default function PackagesPageComp({
                   >
                     {deletingId === pkg._id ? "..." : "حذف"}
                   </button>
-                ) : null}
+                )}
               </div>
             </div>
           ))}
