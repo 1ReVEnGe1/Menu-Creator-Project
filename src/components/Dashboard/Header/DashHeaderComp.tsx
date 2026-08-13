@@ -2,6 +2,7 @@
 
 import { signOut } from "next-auth/react";
 import styles from "./DashHeaderComp.module.css";
+import Link from "next/link";
 
 interface DashHeaderType {
   fullname: string;
@@ -13,7 +14,8 @@ const DashHeader = ({ fullname }: DashHeaderType) => {
       <span className="text-lg font-bold text-slate-700">
         خوش آمدید {fullname} 👋
       </span>
-      <div className={`${styles["dropdown-container"]}`}>
+        
+      <div className={`${styles["dropdown-container"]} flex justify-center items-center gap-2`}>
         <button className=" w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-600">
           A
         </button>

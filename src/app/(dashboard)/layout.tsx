@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import React from "react";
 import { authOptions } from "../api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 export default async function DashboardLayout({
   children,
@@ -25,6 +26,7 @@ export default async function DashboardLayout({
           <div className="mb-8 px-4">
             <h2 className="text-xl font-bold text-indigo-600">پنل مدیریت</h2>
             <p className="text-xs text-slate-400 mt-1">مدیریت هوشمند سیستم</p>
+            <Link className="mt-4 block bg-gray-100 w-fit py-1 px-3 hover:bg-gray-200 text-sm rounded-xl text-blue-600" href={'/'}>مشاهده سایت</Link>
           </div>
           <hr className="border border-gray-200" />
 

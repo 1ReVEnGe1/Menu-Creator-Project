@@ -11,23 +11,40 @@ export async function PUT(
     const { id } = await params;
     const body = await req.json();
 
-    const { title, price, guestCapacity, items, description } = body;
+    const { title, pricingTiers, items, description } = body;
 
-    // اعتبارسنجی اولیه
-    if (!title?.trim() || price === undefined || price === null) {
+    if (!title?.trim()) {
       return NextResponse.json(
-        { success: false, message: "عنوان و قیمت منو الزامی است." },
+        { success: false, message: "عنوان منو الزامی است." },
         { status: 400 }
       );
     }
 
+    // تمیزسازی پله‌های قیمت
+    const formattedTiers = Array.isArray(pricingTiers)
+      ? pricingTiers
+          .filter(
+            (tier: any) =>
+              tier &&
+              (typeof tier.guestCapacity === "string" || typeof tier.price === "string")
+          )
+          .map((tier: any) => ({
+            guestCapacity: typeof tier.guestCapacity === "string" ? tier.guestCapacity.trim() : "",
+            price: typeof tier.price === "string" ? tier.price.trim() : "",
+          }))
+      : [];
+
     // تمیزسازی آرایه آیتم‌ها
     const formattedItems = Array.isArray(items)
       ? items
-          .filter((item: any) => item && typeof item.title === "string" && item.title.trim() !== "")
+          .filter(
+            (item: any) =>
+              item && typeof item.title === "string" && item.title.trim() !== ""
+          )
           .map((item: any) => ({
             title: item.title.trim(),
-            description: typeof item.description === "string" ? item.description.trim() : "",
+            description:
+              typeof item.description === "string" ? item.description.trim() : "",
           }))
       : [];
 
@@ -35,8 +52,7 @@ export async function PUT(
       id,
       {
         title: title.trim(),
-        price: String(price).trim(),
-        guestCapacity: typeof guestCapacity === "string" ? guestCapacity.trim() : "",
+        pricingTiers: formattedTiers,
         items: formattedItems,
         description: typeof description === "string" ? description.trim() : "",
       },

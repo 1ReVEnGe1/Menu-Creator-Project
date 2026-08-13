@@ -1,27 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 
-// تایپ جدید برای هر آیتم داخل منو
 interface IMenuItem {
   title: string;
   description?: string;
 }
 
-// تایپ مطابق با اسکیمای Menu
+interface IPriceTier {
+  guestCapacity: string;
+  price: string;
+}
+
 interface IMenuData {
   _id: string;
   title: string;
-  items: IMenuItem[]; // تبدیل از string[] به IMenuItem[]
-  price: string;
-  guestCapacity: string;
+  items: IMenuItem[];
+  pricingTiers: IPriceTier[];
   subtitle?: string;
   badge?: string;
   description?: string;
 }
 
-// تایپ مطابق با اسکیمای Package (به همراه populate شده منوها)
 interface IPackageData {
   _id: string;
   title: string;
@@ -30,9 +33,9 @@ interface IPackageData {
   menus: IMenuData[];
 }
 
-export default function Home() {
+function MainMenuContent() {
   const [packages, setPackages] = useState<IPackageData[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>("");
+  const [activeCategoryId, setActiveCategoryId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +43,9 @@ export default function Home() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // ۱. دریافت داده‌ها از بک‌اند
+  const { data: session, status } = useSession();
+
+  // 1. Fetch data from backend
   useEffect(() => {
     const fetchPackages = async () => {
       try {
@@ -53,14 +58,12 @@ export default function Home() {
         }
 
         const data = await res.json();
-        console.log(data)
         const packagesData: IPackageData[] = data.packages || [];
 
         setPackages(packagesData);
 
-        // ست کردن اولین دسته‌بندی به عنوان دسته‌بندی فعال
         if (packagesData.length > 0) {
-          setActiveCategory(packagesData[0].title);
+          setActiveCategoryId(packagesData[0]._id);
         }
       } catch (err: any) {
         setError(err.message || "خطایی در برقراری ارتباط رخ داد");
@@ -72,23 +75,21 @@ export default function Home() {
     fetchPackages();
   }, []);
 
-  // ۲. پیدا کردن پکیج (دسته‌بندی) فعال
-  const activePackage = packages.find((pkg) => pkg.title === activeCategory);
-
-  // ۳. لیست منوهای مربوط به دسته‌بندی انتخاب‌شده
+  // 2. Find active package by ID
+  const activePackage = packages.find((pkg) => pkg._id === activeCategoryId);
   const currentMenus = activePackage ? activePackage.menus : [];
 
-  // ۴. استخراج آیدی منو از URL (_id رشته‌ای Mongoose)
+  // 3. Extract menu ID from search parameters
   const menuIdParam = searchParams.get("menu");
 
-  // ۵. پیدا کردن منوی انتخاب‌شده در تمام پکیج‌ها برای نمایش در Drawer
+  // 4. Find selected menu across all packages
   const selectedMenu = menuIdParam
     ? packages
         .flatMap((pkg) => pkg.menus)
         .find((item) => item._id === menuIdParam) || null
     : null;
 
-  // ۶. توابع مدیریت Modal/Drawer
+  // 5. Drawer URL Navigation handlers
   const handleOpenMenu = (id: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("menu", id);
@@ -96,7 +97,10 @@ export default function Home() {
   };
 
   const handleCloseMenu = () => {
-    router.back();
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("menu");
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
   if (loading) {
@@ -118,17 +122,17 @@ export default function Home() {
   return (
     <>
       {/* Liquid Categories Bar */}
-      <section className="py-3 sticky top-0 z-30 bg-white/3 border border-white/10 backdrop-blur-2xl backdrop-saturate-200 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+      <section className="py-3 sticky top-0 z-30 bg-white/3 border-b border-white/10 backdrop-blur-2xl backdrop-saturate-200 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
         <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-5 py-0.5">
           {packages.map((pkg) => {
-            const isActive = activeCategory === pkg.title;
+            const isActive = activeCategoryId === pkg._id;
             return (
               <button
                 key={pkg._id}
-                onClick={() => setActiveCategory(pkg.title)}
+                onClick={() => setActiveCategoryId(pkg._id)}
                 className={`flex-none px-4 py-2.5 rounded-2xl text-xs font-bold transition-all duration-300 relative whitespace-nowrap border ${
                   isActive
-                    ? "text-white bg-linear-to-r from-[#85004E]/90 to-[#b5006b]/90 border-white/40 shadow-[0_4px_20px_rgba(133,0,78,0.5)] backdrop-blur-xl scale-[1.02]"
+                    ? "text-white bg-gradient-to-r from-[#85004E]/90 to-[#b5006b]/90 border-white/40 shadow-[0_4px_20px_rgba(133,0,78,0.5)] backdrop-blur-xl scale-[1.02]"
                     : "text-zinc-400 bg-white/3 border-white/10 hover:bg-white/8 hover:border-white/20 hover:text-zinc-200"
                 }`}
               >
@@ -144,7 +148,7 @@ export default function Home() {
         <div className="flex justify-between items-center mb-5 px-1">
           <div className="flex items-center gap-2.5">
             <h2 className="text-base font-black text-white tracking-tight">
-              منوی {activeCategory}
+              منوی {activePackage?.title}
             </h2>
             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/10 text-zinc-200 border border-white/10">
               {currentMenus.length}
@@ -169,18 +173,18 @@ export default function Home() {
                   onClick={() => handleOpenMenu(menu._id)}
                   className={`group relative rounded-3xl p-5 transition-all duration-300 cursor-pointer overflow-hidden border backdrop-blur-2xl backdrop-saturate-150 active:scale-[0.98] ${
                     isHighlight
-                      ? "bg-linear-to-b from-[#85004E]/25 via-white/5 to-white/2 border-[#85004E]/60 shadow-[0_8px_32px_0_rgba(133,0,78,0.25)] hover:border-[#b5006b]"
+                      ? "bg-gradient-to-b from-[#85004E]/25 via-white/5 to-white/2 border-[#85004E]/60 shadow-[0_8px_32px_0_rgba(133,0,78,0.25)] hover:border-[#b5006b]"
                       : "bg-white/3 border-white/10 hover:border-white/25 hover:bg-white/6 shadow-[0_8px_32px_0_rgba(0,0,0,0.2)]"
                   }`}
                 >
-                  <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/30 to-transparent" />
+                  <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
                   <div className="flex justify-between items-center gap-2 mb-2.5">
                     <span className="text-[10px] font-bold tracking-widest text-zinc-400 uppercase">
-                      {menu.subtitle || menu.guestCapacity}
+                      {/* {menu.subtitle || menu.guestCapacity} */}
                     </span>
                     {menu.badge && (
-                      <span className="text-[9px] font-black tracking-widest text-white px-3 py-1 rounded-full bg-linear-to-r from-[#85004E] to-[#b5006b] border border-white/30 shadow-[0_2px_10px_rgba(133,0,78,0.5)]">
+                      <span className="text-[9px] font-black tracking-widest text-white px-3 py-1 rounded-full bg-gradient-to-r from-[#85004E] to-[#b5006b] border border-white/30 shadow-[0_2px_10px_rgba(133,0,78,0.5)]">
                         {menu.badge}
                       </span>
                     )}
@@ -190,14 +194,12 @@ export default function Home() {
                     {menu.title}
                   </h3>
 
-                  {/* توضیحات کلی منو در کارت */}
                   {menu.description && (
                     <p className="text-xs text-zinc-400 mt-2 line-clamp-2 leading-relaxed whitespace-pre-line">
                       {menu.description}
                     </p>
                   )}
 
-                  {/* لیست خلاصه آیتم‌ها */}
                   <div className="flex flex-wrap gap-1.5 my-3.5">
                     {menu.items.slice(0, 3).map((item, idx) => (
                       <span
@@ -214,16 +216,26 @@ export default function Home() {
                     )}
                   </div>
 
-                  <div className="w-full h-px bg-linear-to-r from-transparent via-white/15 to-transparent my-3.5" />
+                  <div className="w-full h-px bg-gradient-to-r from-transparent via-white/15 to-transparent my-3.5" />
 
                   <div className="flex justify-between items-end">
                     <div>
-                      <span className="text-[10px] text-zinc-400 block font-medium mb-0.5">
-                        قیمت
-                      </span>
-                      <span className="text-xl font-black text-white tracking-tight">
-                        {menu.price}
-                      </span>
+                      {menu.pricingTiers && menu.pricingTiers.length > 0 ? (
+                        menu.pricingTiers.map((item, index) => (
+                          <div key={item.price || index}>
+                            <span className="text-[10px] text-zinc-400 block font-medium mb-0.5">
+                              قیمت ({item.guestCapacity})
+                            </span>
+                            <span className="text-xl font-black text-white tracking-tight">
+                              {item.price}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="text-xs text-zinc-500">
+                          قیمت ثبت نشده
+                        </span>
+                      )}
                     </div>
 
                     <div className="w-10 h-10 rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center group-hover:bg-[#85004E] group-hover:border-[#b5006b] transition-all duration-300 shadow-lg shadow-black/20 group-hover:shadow-[0_0_15px_#85004E]">
@@ -255,9 +267,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Liquid Glass Footer */}
-      <footer className="p-5 text-center text-[10px] text-zinc-500 border-t border-white/10 bg-white/1 backdrop-blur-xl">
-        Developed With 💖 By AMIRREZA
+      {/* Footer */}
+      <footer className="flex flex-col gap-3 p-5 text-center text-[10px] text-zinc-500 border-t border-white/10 bg-white/1 backdrop-blur-xl">
+        <span>Developed With 💖 By AMIRREZA</span>
+        {status === "authenticated" ? (
+          <Link className="underline text-blue-500" href={"/dashboard"}>
+            داشبورد
+          </Link>
+        ) : null}
       </footer>
 
       {/* Liquid Sheet Drawer Modal */}
@@ -282,9 +299,6 @@ export default function Home() {
             <div className="space-y-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[10px] font-black text-[#e250a2] tracking-widest uppercase block mb-1">
-                    {selectedMenu.guestCapacity}
-                  </span>
                   <h2 className="text-2xl font-black text-white">
                     {selectedMenu.title}
                   </h2>
@@ -297,14 +311,12 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* توضیحات کامل منو در Drawer */}
               {selectedMenu.description && (
                 <p className="whitespace-pre-line text-zinc-200 text-xs leading-relaxed bg-white/4 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
                   {selectedMenu.description}
                 </p>
               )}
 
-              {/* نمایش آیتم‌ها به همراه توضیحات اختصاصی هر آیتم */}
               <div>
                 <h4 className="text-xs font-black text-zinc-400 mb-3.5">
                   جزئیات و آیتم‌های منو:
@@ -339,12 +351,19 @@ export default function Home() {
                     قیمت :
                   </span>
                   <div className="text-right">
-                    <span className="text-2xl font-black text-white tracking-tight">
-                      {selectedMenu.price}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 font-bold mr-1.5">
-                      تومان
-                    </span>
+                    {selectedMenu?.pricingTiers.map((item, idx) => (
+                      <div key={item.price || idx}>
+                        <span className="text-[10px] text-zinc-400 font-bold mr-1.5">
+                          {item.guestCapacity}{" "}
+                        </span>
+                        <span className="text-2xl font-black text-white tracking-tight">
+                          {item.price}{" "}
+                        </span>
+                        <span className="text-[10px] text-zinc-400 font-bold mr-1.5">
+                          تومان
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -353,5 +372,19 @@ export default function Home() {
         </div>
       </div>
     </>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#030204] flex items-center justify-center text-zinc-400 text-xs font-bold">
+          در حال بارگذاری...
+        </div>
+      }
+    >
+      <MainMenuContent />
+    </Suspense>
   );
 }

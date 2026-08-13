@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
+import { Providers } from "@/components/Providers/Providers";
 
 const yekanbakhFont = localFont({
   // دو بار عقب‌گرد برای خروج از src/app
@@ -29,9 +30,11 @@ export default function RootLayout({
       className={`${yekanbakhFont.variable} h-full antialiased`}
       dir="rtl"
     >
-      <body >
-        <Toaster position="bottom-center" richColors />
-        {children}
+      <body>
+        <Providers>
+          <Toaster position="bottom-center" richColors />
+          {children}
+        </Providers>
       </body>
     </html>
   );

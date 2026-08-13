@@ -3,15 +3,16 @@
 import PackageFormComp, {
   IPackageInitialData,
   IMenuItem,
+  IPriceTier,
 } from "@/components/Dashboard/PackageForm/PackageFormComp";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 interface MenuData {
   _id?: string;
   title: string;
-  price: string;
-  guestCapacity: string;
+  pricingTiers: IPriceTier[];
   items: IMenuItem[];
   description: string;
 }
@@ -52,7 +53,7 @@ export default function PackagesPageComp({
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
         throw new Error(
-          errorData?.message || "خطا در گرفتن پکیج‌ها. دوباره امتحان کنید"
+          errorData?.message || "خطا در گرفتن پکیج‌ها. دوباره امتحان کنید",
         );
       }
       const data = await res.json();
@@ -87,7 +88,7 @@ export default function PackagesPageComp({
   // تابع حذف پکیج به همراه منوهای زیرمجموعه
   const handleDeletePackage = async (id: string, title: string) => {
     const confirmDelete = window.confirm(
-      `آیا از حذف پکیج «${title}» و تمامی منوهای زیرمجموعه آن اطمینان دارید؟ این عمل قابل بازگشت نیست.`
+      `آیا از حذف پکیج «${title}» و تمامی منوهای زیرمجموعه آن اطمینان دارید؟ این عمل قابل بازگشت نیست.`,
     );
 
     if (!confirmDelete) return;
@@ -175,12 +176,13 @@ export default function PackagesPageComp({
                   {pkg.title}
                 </h2>
                 {pkg.slug && (
-                  <p
+                  <Link
+                    href={`${process.env.NEXT_PUBLIC_BASE_URL}/?menu=${pkg._id}`}
                     style={{ direction: "ltr" }}
-                    className="text-xs font-mono mb-4 text-left truncate text-blue-700 underline"
+                    className=" text-xs mb-4 text-left truncate text-blue-700 underline"
                   >
-                    {process.env.NEXT_PUBLIC_BASE_URL}/{pkg.slug}
-                  </p>
+                    مشاهده منو
+                  </Link>
                 )}
 
                 {/* منوهای داخل پکیج */}
@@ -195,15 +197,31 @@ export default function PackagesPageComp({
                     >
                       <div className="flex justify-between items-center text-sm font-bold text-slate-700">
                         <span>{m.title}</span>
-                        <span style={{ color: "#85004E" }}>
-                          {m.price}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {m.guestCapacity}
                       </div>
 
-                      {/* نمایش آیتم‌های منو (شیء شامل عنوان و توضیحات) */}
+                      {/* نمایش پله‌های قیمت و ظرفیت */}
+                      {m.pricingTiers?.length > 0 && (
+                        <div className="space-y-1 bg-white p-2.5 rounded-xl border border-slate-100">
+                          {m.pricingTiers.map((tier, tIdx) => (
+                            <div
+                              key={tIdx}
+                              className="flex justify-between items-center text-xs"
+                            >
+                              <span className="text-slate-500">
+                                {tier.guestCapacity || "—"}
+                              </span>
+                              <span
+                                className="font-bold"
+                                style={{ color: "#85004E" }}
+                              >
+                                {tier.price || "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* نمایش آیتم‌های منو */}
                       {m.items?.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {m.items.slice(0, 4).map((item, i) => (
@@ -214,7 +232,10 @@ export default function PackagesPageComp({
                             >
                               <span>{item.title}</span>
                               {item.description && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" title="دارای توضیحات" />
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full bg-amber-400"
+                                  title="دارای توضیحات"
+                                />
                               )}
                             </span>
                           ))}

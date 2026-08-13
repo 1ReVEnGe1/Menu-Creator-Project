@@ -7,30 +7,47 @@ export async function POST(req: Request) {
     await connectDB();
     const body = await req.json();
 
-    const { title, price, guestCapacity, items, description } = body;
+    const { title, pricingTiers, items, description } = body;
 
     // اعتبارسنجی فیلدهای اصلی
-    if (!title?.trim() || price === undefined || price === null || !guestCapacity?.trim()) {
+    if (!title?.trim()) {
       return NextResponse.json(
-        { success: false, error: "لطفاً تمامی فیلدهای الزامی (عنوان، قیمت و ظرفیت) را وارد کنید." },
+        { success: false, error: "لطفاً عنوان منو را وارد کنید." },
         { status: 400 }
       );
     }
 
-    // اعتبارسنجی و تمیزسازی ساختار جدید آیتم‌ها [{ title, description }]
+    // اعتبارسنجی و تمیزسازی پله‌های قیمت [{ guestCapacity, price }]
+    const formattedTiers = Array.isArray(pricingTiers)
+      ? pricingTiers
+          .filter(
+            (tier: any) =>
+              tier &&
+              (typeof tier.guestCapacity === "string" || typeof tier.price === "string")
+          )
+          .map((tier: any) => ({
+            guestCapacity: typeof tier.guestCapacity === "string" ? tier.guestCapacity.trim() : "",
+            price: typeof tier.price === "string" ? tier.price.trim() : "",
+          }))
+      : [];
+
+    // اعتبارسنجی و تمیزسازی ساختار آیتم‌ها [{ title, description }]
     const formattedItems = Array.isArray(items)
       ? items
-          .filter((item: any) => item && typeof item.title === "string" && item.title.trim() !== "")
+          .filter(
+            (item: any) =>
+              item && typeof item.title === "string" && item.title.trim() !== ""
+          )
           .map((item: any) => ({
             title: item.title.trim(),
-            description: typeof item.description === "string" ? item.description.trim() : "",
+            description:
+              typeof item.description === "string" ? item.description.trim() : "",
           }))
       : [];
 
     const newMenu = await Menu.create({
       title: title.trim(),
-      price: String(price).trim(),
-      guestCapacity: guestCapacity.trim(),
+      pricingTiers: formattedTiers,
       items: formattedItems,
       description: typeof description === "string" ? description.trim() : "",
     });
