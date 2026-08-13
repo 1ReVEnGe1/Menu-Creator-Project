@@ -33,21 +33,16 @@ declare module "next-auth" {
   }
 }
 
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    fullname: string;
-    phone: string;
-    role: string;
-    permissions: string[];
-  }
-}
-
 /* =========================================================
    Auth Configuration
 ========================================================= */
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const {
+  handlers,
+  auth,
+  signIn,
+  signOut,
+} = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
 
   providers: [
@@ -75,7 +70,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           typeof credentials?.phone !== "string" ||
           typeof credentials?.password !== "string"
         ) {
-          throw new Error("لطفا شماره همراه و رمز عبور را وارد کنید");
+          throw new Error(
+            "لطفا شماره همراه و رمز عبور را وارد کنید"
+          );
         }
 
         const phone = credentials.phone;
@@ -113,14 +110,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             "کاربری با این شماره یافت نشد یا رمز عبور اشتباه است"
           );
         }
-        
 
         /* -------------------------------------------------
            Check account status
         ------------------------------------------------- */
 
         if (user.isActive === false) {
-          throw new Error("حساب کاربری شما غیرفعال شده است");
+          throw new Error(
+            "حساب کاربری شما غیرفعال شده است"
+          );
         }
 
         /* -------------------------------------------------
@@ -143,8 +141,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const roleObj = user.role as any;
 
         const permissionsStrings: string[] =
-          roleObj?.permissions?.map((permission: any) => permission.name) ||
-          [];
+          roleObj?.permissions?.map(
+            (permission: any) => permission.name
+          ) || [];
 
         /* -------------------------------------------------
            Return authenticated user
@@ -171,10 +170,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ----------------------------------------------------- */
 
     async jwt({ token, user, trigger, session }) {
-      /* -----------------------------------------------
-         Initial login
-      ------------------------------------------------ */
-
       if (user) {
         token.id = user.id;
         token.fullname = user.fullname;
@@ -182,10 +177,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = user.role;
         token.permissions = user.permissions;
       }
-
-      /* -----------------------------------------------
-         Session update
-      ------------------------------------------------ */
 
       if (trigger === "update" && session?.user) {
         token.fullname =
@@ -210,11 +201,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id;
-        session.user.fullname = token.fullname;
-        session.user.phone = token.phone;
-        session.user.role = token.role;
-        session.user.permissions = token.permissions;
+        session.user.id = token.id as string;
+        session.user.fullname = token.fullname as string;
+        session.user.phone = token.phone as string;
+        session.user.role = token.role as string;
+        session.user.permissions =
+          token.permissions as string[];
       }
 
       return session;
