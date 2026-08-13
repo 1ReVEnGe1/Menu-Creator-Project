@@ -1,70 +1,123 @@
-// proxy.ts (یا middleware.ts)
-import { getToken } from "next-auth/jwt";
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
+import { NextResponse } from "next/server";
 
-export async function proxy(req: NextRequest) {
-  const token = await getToken({ req });
+export default auth((req) => {
   const pathname = req.nextUrl.pathname;
+  const session = req.auth;
 
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/register");
-  const isDashboardPage = pathname.startsWith("/dashboard");
+  const isAuthPage =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register");
 
-  // ۱. عدم دسترسی برای کاربر غیر لاگین
-  if (!token && isDashboardPage) {
+  const isDashboardPage =
+    pathname.startsWith("/dashboard");
+
+  // =====================================================
+  // 1. کاربر لاگین نکرده و می‌خواهد وارد داشبورد شود
+  // =====================================================
+
+  if (!session && isDashboardPage) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
+
     return NextResponse.redirect(url);
   }
 
-  // ۲. هدایت کاربر لاگین شده از صفحات لاگین
-  if (token && isAuthPage) {
+  // =====================================================
+  // 2. کاربر لاگین کرده و دوباره وارد Login/Register شده
+  // =====================================================
+
+  if (session && isAuthPage) {
     const url = req.nextUrl.clone();
     url.pathname = "/dashboard";
+
     return NextResponse.redirect(url);
   }
 
-  // ۳. ارزیابی پویای دسترسی‌ها
-  if (token && isDashboardPage) {
-    const userRole = (token.role as string) || "USER";
-    const userPermissions = (token.permissions as string[]) || [];
+  // =====================================================
+  // 3. بررسی Permission های داشبورد
+  // =====================================================
 
-    // مدیر کل به همه‌چیز دسترسی دارد
+  if (session && isDashboardPage) {
+    const user = session.user;
+
+    const userRole = user?.role || "USER";
+    const userPermissions = user?.permissions || [];
+
+    // ---------------------------------------------------
+    // SUPER_ADMIN به همه بخش‌ها دسترسی دارد
+    // ---------------------------------------------------
+
     if (userRole === "SUPER_ADMIN") {
       return NextResponse.next();
     }
 
-    // اگر مسیر دقیقا خود "/dashboard" بود
-    if (pathname === "/dashboard" || pathname === "/dashboard/") {
+    // ---------------------------------------------------
+    // خود صفحه اصلی Dashboard برای همه کاربران مجاز است
+    // ---------------------------------------------------
+
+    if (
+      pathname === "/dashboard" ||
+      pathname === "/dashboard/"
+    ) {
       return NextResponse.next();
     }
 
-    // استخراج ماژول از URL:
-    // مثلاً از "/dashboard/access-control/roles" بخش "access-control" را می‌گیرد
-    const segments = pathname.split("/").filter(Boolean); // ["dashboard", "access-control", "roles"]
-    const rawModule = segments[1]; // "access-control"
+    // ---------------------------------------------------
+    // استخراج module از URL
+    //
+    // /dashboard/access-control/roles
+    //
+    // =>
+    // access-control
+    // ---------------------------------------------------
+
+    const segments = pathname
+      .split("/")
+      .filter(Boolean);
+
+    const rawModule = segments[1];
 
     if (rawModule) {
-      // تبدیل "-" به "_" جهت همخوانی با نام ماژول در دیتابیس (مثلا access-control -> access_control)
+      // access-control
+      // =>
+      // access_control
+
       const moduleName = rawModule.replace(/-/g, "_");
 
-      // بررسی اینکه آیا کاربر پرمیشنی مربوط به این ماژول دارد یا نه
-      // مثلاً چک می‌کند آیا "users:read" یا "users:write" یا "users" در لیست دارد یا نه
+      // -------------------------------------------------
+      // بررسی Permission
+      // -------------------------------------------------
+
       const hasPermission = userPermissions.some((perm) => {
-        const [permModule] = perm.split(":"); // "users:read" -> "users"
-        return permModule === moduleName || perm === moduleName;
+        const [permModule] = perm.split(":");
+
+        return (
+          permModule === moduleName ||
+          perm === moduleName
+        );
       });
+
+      // -------------------------------------------------
+      // عدم دسترسی
+      // -------------------------------------------------
 
       if (!hasPermission) {
         const url = req.nextUrl.clone();
-        url.pathname = "/dashboard"; // هدایت به صفحه اصلی داشبورد در صورت عدم داشتن دسترسی
+        url.pathname = "/dashboard";
+
         return NextResponse.redirect(url);
       }
     }
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
-  matcher: ["/login", "/register", "/dashboard/:path*"],
+  matcher: [
+    "/login",
+    "/register",
+    "/dashboard/:path*",
+  ],
 };

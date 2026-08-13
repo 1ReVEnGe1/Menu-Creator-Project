@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import connectDB from "lib/db";
 import { Role } from "models/Role";
-// import { getServerSession } from "next-auth"; // اگر از نکست‌اوت استفاده می‌کنی
 
 export async function POST(req: Request) {
   try {
@@ -33,10 +32,6 @@ export async function POST(req: Request) {
     let finalIsSystemRole = false;
     
     if (isSystemRole === true) {
-      // TODO: در این بخش باید چک کنی که آیا کاربر جاری ادمین اصلی است یا نه.
-      // به عنوان مثال:
-      // const session = await getServerSession(authOptions);
-      // if (!session || session.user.role !== "SUPER_ADMIN") { ... }
       
       const isUserSuperAdmin = true; // این متغیر را بر اساس سیستم احراز هویت خودت مقداردهی کن
       

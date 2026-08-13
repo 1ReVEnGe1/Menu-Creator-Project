@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"; // مسیر کانفیگ NextAuth شما
 
 import mongoose from "mongoose";
 import connectDB from "lib/db";
 import { Permission } from "models/Permission";
+import { auth } from "@/auth";
 
 export async function DELETE(
   req: Request,
@@ -12,7 +11,7 @@ export async function DELETE(
 ) {
   try {
     // ۱. بررسی احراز هویت و سطوح دسترسی کاربر
-    const session = await getServerSession(authOptions);
+    const session = await auth()
 
     if (!session || !session.user) {
       return NextResponse.json(

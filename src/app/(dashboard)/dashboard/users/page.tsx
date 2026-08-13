@@ -1,14 +1,15 @@
 // app/dashboard/users/page.tsx
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
+import { auth } from "@/auth";
 import UsersPageComp from "@/components/Dashboard/UsersPage/UsersPageComp";
-import { getServerSession } from "next-auth";
+
 import { redirect } from "next/navigation";
 import { getUsersData } from "utils/getUsers";
 
 const LIMIT = 10;
 
 const UsersPage = async () => {
-  const session = await getServerSession(authOptions);
+  const session = await auth()
 
   if (!session || !session.user) {
     redirect("/");

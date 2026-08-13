@@ -1,17 +1,18 @@
 import DashHeader from "@/components/Dashboard/Header/DashHeaderComp";
 import DashSidebarComp from "@/components/Dashboard/Sidebar/DashSidebarComp";
-import { getServerSession } from "next-auth";
+
 import React from "react";
-import { authOptions } from "../api/auth/[...nextauth]/route";
+
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { auth } from "@/auth";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session || !session.user) {
     redirect("/login");

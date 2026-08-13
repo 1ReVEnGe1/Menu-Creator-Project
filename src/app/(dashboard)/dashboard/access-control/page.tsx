@@ -1,14 +1,11 @@
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import AccessControlPageComp from "@/components/Dashboard/AccessControlPage/AccessControlPageComp";
 import connectDB from "lib/db";
 import { Permission } from "models/Permission";
 import { Role } from "models/Role";
-import { getServerSession } from "next-auth";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 const LIMIT = 10;
-
 
 const getRolesData = async () => {
   await connectDB();
@@ -42,8 +39,8 @@ const getRolesData = async () => {
         ? new Date(role.createdAt).toLocaleDateString("fa-IR")
         : "ثبت نشده",
       updatedAt: role.updatedAt
-        ? new Date(role.updatedAt).toLocaleDateString('fa-IR')
-        : 'ثبت نشده'
+        ? new Date(role.updatedAt).toLocaleDateString("fa-IR")
+        : "ثبت نشده",
     };
   });
 
@@ -52,11 +49,10 @@ const getRolesData = async () => {
     stats: {
       total: totalRoles,
       system: systemRoles,
-      custom: customRoles
+      custom: customRoles,
     },
   };
 };
-
 
 const AccessControlPage = async () => {
   const { roles, stats } = await getRolesData();
@@ -66,19 +62,29 @@ const AccessControlPage = async () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">مدیریت نقش‌ها و دسترسی‌ها</h1>
-          <p className="text-sm text-slate-500 mt-1">تنظیم و مانیتورینگ سطوح دسترسی کاربران سیستم</p>
+          <h1 className="text-2xl font-bold text-slate-900">
+            مدیریت نقش‌ها و دسترسی‌ها
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            تنظیم و مانیتورینگ سطوح دسترسی کاربران سیستم
+          </p>
         </div>
-        <Link href={'/dashboard/access-control/roles/new-role'} className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm shadow-indigo-100 flex items-center gap-2">
+        <Link
+          href={"/dashboard/access-control/roles/new-role"}
+          className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm shadow-indigo-100 flex items-center gap-2"
+        >
           <span>افزودن نقش جدید</span>
         </Link>
-        <Link href={'/dashboard/access-control/permissions'} className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm shadow-indigo-100 flex items-center gap-2">
+        <Link
+          href={"/dashboard/access-control/permissions"}
+          className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm shadow-indigo-100 flex items-center gap-2"
+        >
           <span>مدیریت دسترسی ها</span>
         </Link>
       </div>
 
       {/* پاس دادن داده‌ها به کامپوننت کلاینت */}
-      <AccessControlPageComp  initialRoles={roles} stats={stats} />
+      <AccessControlPageComp initialRoles={roles} stats={stats} />
     </div>
   );
 };
