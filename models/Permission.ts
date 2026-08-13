@@ -26,7 +26,6 @@ const permissionSchema = new mongoose.Schema<IPermission>(
   { timestamps: true },
 );
 
-permissionSchema.index({ name: 1 });
 
 export const Permission: mongoose.Model<IPermission> =
   mongoose.models.Permission ||

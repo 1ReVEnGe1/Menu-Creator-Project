@@ -52,9 +52,6 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-// ایندکس‌گذاری فیلدها برای سرعت بسیار بالا در زمان سرچ و لاگین
-userSchema.index({ phone: 1 });
-userSchema.index({ email: 1 });
 
 // متد مقایسه پسورد برای سندهای معمولی مونیگوز
 userSchema.methods.comparePassword = async function (

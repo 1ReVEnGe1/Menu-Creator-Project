@@ -32,6 +32,5 @@ const roleSchema = new mongoose.Schema<IRole>({
     timestamps : true
 })
 
-roleSchema.index({name : 1})
 
 export const Role : mongoose.Model<IRole> = mongoose.models.Role || mongoose.model<IRole>('Role', roleSchema) 
