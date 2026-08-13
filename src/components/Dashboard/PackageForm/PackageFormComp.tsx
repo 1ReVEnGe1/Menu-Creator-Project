@@ -43,61 +43,115 @@ export default function PackageFormComp({
 }: PackageFormCompProps) {
   const [submitting, setSubmitting] = useState(false);
 
-  // 1. Package level states
-  const [packageTitle, setPackageTitle] = useState(initialData?.title || "");
-  const [packageSlug, setPackageSlug] = useState(initialData?.slug || "");
+  // =========================================================
+  // PACKAGE LEVEL STATES
+  // =========================================================
+
+  const [packageTitle, setPackageTitle] = useState(
+    initialData?.title || ""
+  );
+
+  const [packageSlug, setPackageSlug] = useState(
+    initialData?.slug || ""
+  );
+
   const [slugError, setSlugError] = useState<string | null>(null);
+
   const [checkingSlug, setCheckingSlug] = useState(false);
+
   const [packageCategory, setPackageCategory] = useState<
     "general-menu" | "sub-services-menu"
   >(initialData?.category || "general-menu");
 
-  // Accordion management
+  // =========================================================
+  // ACCORDION
+  // =========================================================
+
   const [openMenuIndexes, setOpenMenuIndexes] = useState<number[]>([0]);
 
-  // Map initial data correctly with pricingTiers
+  // =========================================================
+  // MENUS
+  // =========================================================
+
   const [menus, setMenus] = useState<IMenuForm[]>(
     initialData?.menus && initialData.menus.length > 0
       ? initialData.menus.map((m) => ({
           _id: m._id,
+
           title: m.title || "",
+
           pricingTiers:
             m.pricingTiers && m.pricingTiers.length > 0
               ? m.pricingTiers.map((pt) => ({
                   guestCapacity: pt.guestCapacity || "",
                   price: pt.price || "",
                 }))
-              : [{ guestCapacity: "از ۶۰ نفر تا ۱۲۰ نفر", price: "" }],
+              : [
+                  {
+                    guestCapacity: "از ۶۰ نفر تا ۱۲۰ نفر",
+                    price: "",
+                  },
+                ],
+
           items:
             m.items && m.items.length > 0
               ? m.items.map((i) => ({
                   title: i.title || "",
                   description: i.description || "",
                 }))
-              : [{ title: "", description: "" }],
+              : [
+                  {
+                    title: "",
+                    description: "",
+                  },
+                ],
+
           description: m.description || "",
         }))
       : [
           {
             title: "منوی شماره ۱ (اقتصادی)",
+
             pricingTiers: [
-              { guestCapacity: "از ۶۰ نفر تا ۱۲۰ نفر", price: "" },
+              {
+                guestCapacity: "از ۶۰ نفر تا ۱۲۰ نفر",
+                price: "",
+              },
             ],
-            items: [{ title: "", description: "" }],
+
+            items: [
+              {
+                title: "",
+                description: "",
+              },
+            ],
+
             description: "",
           },
         ]
   );
 
+  // =========================================================
+  // INPUT REFS
+  // =========================================================
+
   const itemInputRefs = useRef<{
-    [key: string]: HTMLInputElement | HTMLTextAreaElement | null;
+    [key: string]:
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | null;
   }>({});
+
+  // =========================================================
+  // SLUG
+  // =========================================================
 
   const handleSlugChange = (val: string) => {
     const formatted = val
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-")
       .replace(/-+/g, "-");
+
     setPackageSlug(formatted);
     setSlugError(null);
   };
@@ -109,12 +163,14 @@ export default function PackageFormComp({
     }
 
     setCheckingSlug(true);
+
     try {
       const res = await fetch(
         `/api/private/packages/check-slug?slug=${encodeURIComponent(
           packageSlug
         )}&currentId=${initialData?._id || ""}`
       );
+
       const data = await res.json();
 
       if (!data.isUnique) {
@@ -131,33 +187,68 @@ export default function PackageFormComp({
     }
   };
 
+  // =========================================================
+  // ACCORDION HELPERS
+  // =========================================================
+
   const toggleAccordion = (index: number) => {
     setOpenMenuIndexes((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+      prev.includes(index)
+        ? prev.filter((i) => i !== index)
+        : [...prev, index]
     );
   };
 
-  const expandAll = () => setOpenMenuIndexes(menus.map((_, i) => i));
-  const collapseAll = () => setOpenMenuIndexes([]);
+  const expandAll = () => {
+    setOpenMenuIndexes(menus.map((_, i) => i));
+  };
+
+  const collapseAll = () => {
+    setOpenMenuIndexes([]);
+  };
+
+  // =========================================================
+  // MENU HELPERS
+  // =========================================================
 
   const addMenuField = () => {
     const newIdx = menus.length;
+
     setMenus([
       ...menus,
       {
         title: `منوی شماره ${newIdx + 1}`,
-        pricingTiers: [{ guestCapacity: "از ۶۰ نفر تا ۱۲۰ نفر", price: "" }],
-        items: [{ title: "", description: "" }],
+
+        pricingTiers: [
+          {
+            guestCapacity: "از ۶۰ نفر تا ۱۲۰ نفر",
+            price: "",
+          },
+        ],
+
+        items: [
+          {
+            title: "",
+            description: "",
+          },
+        ],
+
         description: "",
       },
     ]);
+
     setOpenMenuIndexes((prev) => [...prev, newIdx]);
   };
 
   const removeMenuField = (index: number) => {
-    setMenus(menus.filter((_, i) => i !== index));
+    setMenus((prev) =>
+      prev.filter((_, i) => i !== index)
+    );
+
     setOpenMenuIndexes((prev) =>
-      prev.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i))
+      prev
+        .filter((i) => i !== index)
+        .map((i) => (i > index ? i - 1 : i))
     );
   };
 
@@ -166,16 +257,39 @@ export default function PackageFormComp({
     field: keyof IMenuForm,
     value: any
   ) => {
-    const updated = [...menus];
-    updated[index] = { ...updated[index], [field]: value };
-    setMenus(updated);
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      updated[index] = {
+        ...updated[index],
+        [field]: value,
+      };
+
+      return updated;
+    });
   };
 
-  // --- Tier Helpers ---
+  // =========================================================
+  // PRICE TIER HELPERS
+  // =========================================================
+
   const addPriceTier = (menuIdx: number) => {
-    const updated = [...menus];
-    updated[menuIdx].pricingTiers.push({ guestCapacity: "", price: "" });
-    setMenus(updated);
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      updated[menuIdx] = {
+        ...updated[menuIdx],
+        pricingTiers: [
+          ...updated[menuIdx].pricingTiers,
+          {
+            guestCapacity: "",
+            price: "",
+          },
+        ],
+      };
+
+      return updated;
+    });
   };
 
   const updatePriceTier = (
@@ -184,29 +298,82 @@ export default function PackageFormComp({
     field: keyof IPriceTier,
     value: string
   ) => {
-    const updated = [...menus];
-    updated[menuIdx].pricingTiers[tierIdx][field] = value;
-    setMenus(updated);
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      const tiers = [...updated[menuIdx].pricingTiers];
+
+      tiers[tierIdx] = {
+        ...tiers[tierIdx],
+        [field]: value,
+      };
+
+      updated[menuIdx] = {
+        ...updated[menuIdx],
+        pricingTiers: tiers,
+      };
+
+      return updated;
+    });
   };
 
-  const removePriceTier = (menuIdx: number, tierIdx: number) => {
-    const updated = [...menus];
-    updated[menuIdx].pricingTiers = updated[menuIdx].pricingTiers.filter(
-      (_, i) => i !== tierIdx
-    );
-    setMenus(updated);
+  const removePriceTier = (
+    menuIdx: number,
+    tierIdx: number
+  ) => {
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      updated[menuIdx] = {
+        ...updated[menuIdx],
+
+        pricingTiers:
+          updated[menuIdx].pricingTiers.filter(
+            (_, i) => i !== tierIdx
+          ),
+      };
+
+      return updated;
+    });
   };
 
-  // --- Item Helpers ---
-  const addMenuItem = (menuIdx: number) => {
-    const updated = [...menus];
-    updated[menuIdx].items.push({ title: "", description: "" });
-    setMenus(updated);
+  // =========================================================
+  // ITEM HELPERS
+  // =========================================================
 
-    const newMenuItemIdx = updated[menuIdx].items.length - 1;
-    setTimeout(() => {
-      itemInputRefs.current[`${menuIdx}-${newMenuItemIdx}-title`]?.focus();
-    }, 50);
+  const addMenuItem = (
+    menuIdx: number,
+    shouldFocus = true
+  ) => {
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      updated[menuIdx] = {
+        ...updated[menuIdx],
+
+        items: [
+          ...updated[menuIdx].items,
+
+          {
+            title: "",
+            description: "",
+          },
+        ],
+      };
+
+      return updated;
+    });
+
+    if (shouldFocus) {
+      const newMenuItemIdx =
+        menus[menuIdx].items.length;
+
+      setTimeout(() => {
+        itemInputRefs.current[
+          `${menuIdx}-${newMenuItemIdx}-title`
+        ]?.focus();
+      }, 50);
+    }
   };
 
   const updateMenuItem = (
@@ -215,47 +382,173 @@ export default function PackageFormComp({
     field: keyof IMenuItem,
     value: string
   ) => {
-    const updated = [...menus];
-    updated[menuIdx].items[itemIdx][field] = value;
-    setMenus(updated);
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      const items = [...updated[menuIdx].items];
+
+      items[itemIdx] = {
+        ...items[itemIdx],
+        [field]: value,
+      };
+
+      updated[menuIdx] = {
+        ...updated[menuIdx],
+        items,
+      };
+
+      return updated;
+    });
   };
 
-  const removeMenuItem = (menuIdx: number, itemIdx: number) => {
-    const updated = [...menus];
-    updated[menuIdx].items = updated[menuIdx].items.filter(
-      (_, i) => i !== itemIdx
-    );
-    setMenus(updated);
+  const removeMenuItem = (
+    menuIdx: number,
+    itemIdx: number
+  ) => {
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      updated[menuIdx] = {
+        ...updated[menuIdx],
+
+        items: updated[menuIdx].items.filter(
+          (_, i) => i !== itemIdx
+        ),
+      };
+
+      return updated;
+    });
   };
+
+  // =========================================================
+  // KEYBOARD NAVIGATION
+  //
+  // TITLE:
+  // Enter -> Description
+  //
+  // DESCRIPTION:
+  // Enter -> New line
+  // Shift + Enter -> Next item
+  // =========================================================
 
   const handleKeyDownItem = (
-    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: React.KeyboardEvent<
+      HTMLInputElement | HTMLTextAreaElement
+    >,
     menuIdx: number,
     itemIdx: number,
     fieldType: "title" | "description"
   ) => {
-    if (e.key === "Enter") {
-      if (fieldType === "description" && e.shiftKey) {
+    // فقط Enter
+    if (e.key !== "Enter") {
+      return;
+    }
+
+    // =====================================================
+    // TITLE
+    // =====================================================
+
+    if (fieldType === "title") {
+      e.preventDefault();
+
+      const title =
+        menus[menuIdx].items[itemIdx].title;
+
+      // اگر عنوان خالی است، حرکت نکن
+      if (!title.trim()) {
         return;
       }
 
-      e.preventDefault();
+      // Enter در Title
+      // -> Description همان آیتم
 
-      if (fieldType === "title") {
-        if (!menus[menuIdx].items[itemIdx].title.trim()) return;
-        itemInputRefs.current[`${menuIdx}-${itemIdx}-description`]?.focus();
-      } else {
-        if (itemIdx < menus[menuIdx].items.length - 1) {
-          itemInputRefs.current[`${menuIdx}-${itemIdx + 1}-title`]?.focus();
-        } else {
-          addMenuItem(menuIdx);
-        }
-      }
+      itemInputRefs.current[
+        `${menuIdx}-${itemIdx}-description`
+      ]?.focus();
+
+      return;
     }
+
+    // =====================================================
+    // DESCRIPTION
+    // =====================================================
+
+    // اگر Shift نگرفته شده:
+    //
+    // Enter معمولی
+    // -> اجازه بده textarea خودش خط جدید بسازد
+    //
+    // اینجا عمداً preventDefault نمی‌کنیم.
+
+    if (!e.shiftKey) {
+      return;
+    }
+
+    // =====================================================
+    // SHIFT + ENTER
+    //
+    // -> آیتم بعدی
+    // =====================================================
+
+    e.preventDefault();
+
+    const nextItemIdx = itemIdx + 1;
+
+    // اگر آیتم بعدی وجود دارد
+    if (
+      nextItemIdx <
+      menus[menuIdx].items.length
+    ) {
+      setTimeout(() => {
+        itemInputRefs.current[
+          `${menuIdx}-${nextItemIdx}-title`
+        ]?.focus();
+      }, 0);
+
+      return;
+    }
+
+    // =====================================================
+    // اگر آخرین آیتم بود
+    // -> ساخت آیتم جدید
+    // -> Focus روی Title آیتم جدید
+    // =====================================================
+
+    setMenus((prev) => {
+      const updated = [...prev];
+
+      updated[menuIdx] = {
+        ...updated[menuIdx],
+
+        items: [
+          ...updated[menuIdx].items,
+
+          {
+            title: "",
+            description: "",
+          },
+        ],
+      };
+
+      return updated;
+    });
+
+    setTimeout(() => {
+      itemInputRefs.current[
+        `${menuIdx}-${nextItemIdx}-title`
+      ]?.focus();
+    }, 50);
   };
 
-  const handleSubmitPackage = async (e: React.FormEvent) => {
+  // =========================================================
+  // SUBMIT
+  // =========================================================
+
+  const handleSubmitPackage = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
+
     if (slugError) {
       alert("لطفاً ابتدا خطای اسلاگ را برطرف کنید.");
       return;
@@ -268,19 +561,33 @@ export default function PackageFormComp({
 
       for (const menu of menus) {
         const isEditMenu = Boolean(menu._id);
+
         const menuUrl = isEditMenu
           ? `/api/private/menus/edit-menu/${menu._id}`
           : "/api/private/menus/add-menu";
-        const menuMethod = isEditMenu ? "PUT" : "POST";
 
-        const cleanItems = menu.items.filter((i) => i.title.trim() !== "");
-        const cleanTiers = menu.pricingTiers.filter(
-          (t) => t.guestCapacity.trim() !== "" || t.price.trim() !== ""
+        const menuMethod = isEditMenu
+          ? "PUT"
+          : "POST";
+
+        const cleanItems = menu.items.filter(
+          (i) => i.title.trim() !== ""
         );
+
+        const cleanTiers =
+          menu.pricingTiers.filter(
+            (t) =>
+              t.guestCapacity.trim() !== "" ||
+              t.price.trim() !== ""
+          );
 
         const resMenu = await fetch(menuUrl, {
           method: menuMethod,
-          headers: { "Content-Type": "application/json" },
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
           body: JSON.stringify({
             title: menu.title,
             pricingTiers: cleanTiers,
@@ -290,20 +597,35 @@ export default function PackageFormComp({
         });
 
         const menuData = await resMenu.json();
+
         if (menuData.success) {
-          processedMenuIds.push(menuData.data._id || menu._id);
+          processedMenuIds.push(
+            menuData.data._id || menu._id
+          );
         }
       }
+
+      // =====================================================
+      // PACKAGE
+      // =====================================================
 
       const pkgUrl =
         mode === "create"
           ? "/api/private/packages/add-package"
           : `/api/private/packages/edit-package/${initialData?._id}`;
-      const pkgMethod = mode === "create" ? "POST" : "PUT";
+
+      const pkgMethod =
+        mode === "create"
+          ? "POST"
+          : "PUT";
 
       const resPkg = await fetch(pkgUrl, {
         method: pkgMethod,
-        headers: { "Content-Type": "application/json" },
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
         body: JSON.stringify({
           title: packageTitle,
           slug: packageSlug,
@@ -317,49 +639,77 @@ export default function PackageFormComp({
         onClose();
       } else {
         const errorData = await resPkg.json();
-        alert(errorData.message || "خطا در ثبت پکیج");
+
+        alert(
+          errorData.message ||
+            "خطا در ثبت پکیج"
+        );
       }
     } catch (err) {
       console.error(err);
-      alert("خطایی در ارتباط با سرور رخ داد.");
+
+      alert(
+        "خطایی در ارتباط با سرور رخ داد."
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
-    <form onSubmit={handleSubmitPackage} className="space-y-8">
-      {/* بخش ۱: اطلاعات کلی پکیج */}
+    <form
+      onSubmit={handleSubmitPackage}
+      className="space-y-8"
+    >
+      {/* =====================================================
+          PACKAGE INFORMATION
+      ====================================================== */}
+
       <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
         <h3 className="text-slate-700 text-sm font-bold">
           ۱. مشخصات پکیج اصلی
         </h3>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Package title */}
+
           <div>
             <label className="block text-xs text-slate-600 mb-1">
               عنوان پکیج (فارسی)
             </label>
+
             <input
               type="text"
               required
               placeholder="مثلا: پکیج‌های تولد بزرگسال"
               value={packageTitle}
-              onChange={(e) => setPackageTitle(e.target.value)}
+              onChange={(e) =>
+                setPackageTitle(e.target.value)
+              }
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#85004E]"
             />
           </div>
+
+          {/* Slug */}
 
           <div>
             <label className="block text-xs text-slate-600 mb-1">
               نام یکتا در آدرس / Slug (انگلیسی)
             </label>
+
             <input
               type="text"
               required
               dir="ltr"
               placeholder="e.g. birthday-vip-package"
               value={packageSlug}
-              onChange={(e) => handleSlugChange(e.target.value)}
+              onChange={(e) =>
+                handleSlugChange(e.target.value)
+              }
               onBlur={verifySlugUniqueness}
               className={`w-full border rounded-xl p-3 text-sm font-mono focus:outline-none focus:ring-2 ${
                 slugError
@@ -367,11 +717,13 @@ export default function PackageFormComp({
                   : "border-slate-200 focus:ring-[#85004E]"
               }`}
             />
+
             {checkingSlug && (
               <span className="text-[11px] text-slate-400 mt-1 block">
                 در حال بررسی...
               </span>
             )}
+
             {slugError && (
               <span className="text-[11px] text-red-500 mt-1 block font-medium">
                 {slugError}
@@ -379,16 +731,28 @@ export default function PackageFormComp({
             )}
           </div>
 
+          {/* Category */}
+
           <div>
             <label className="block text-xs text-slate-600 mb-1">
               نوع پکیج
             </label>
+
             <select
               value={packageCategory}
-              onChange={(e) => setPackageCategory(e.target.value as any)}
+              onChange={(e) =>
+                setPackageCategory(
+                  e.target.value as
+                    | "general-menu"
+                    | "sub-services-menu"
+                )
+              }
               className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#85004E]"
             >
-              <option value="general-menu">پکیج کلی (تولد، عروسی و ...)</option>
+              <option value="general-menu">
+                پکیج کلی (تولد، عروسی و ...)
+              </option>
+
               <option value="sub-services-menu">
                 منوی تک‌خدماتی (بارتندر، مزه و ...)
               </option>
@@ -397,13 +761,17 @@ export default function PackageFormComp({
         </div>
       </div>
 
-      {/* بخش ۲: منوهای زیرمجموعه */}
+      {/* =====================================================
+          MENUS
+      ====================================================== */}
+
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <h3 className="text-slate-700 text-sm font-bold">
               ۲. منوهای زیرمجموعه این پکیج
             </h3>
+
             <div className="flex gap-2 text-xs">
               <button
                 type="button"
@@ -412,7 +780,11 @@ export default function PackageFormComp({
               >
                 باز کردن همه
               </button>
-              <span className="text-slate-300">|</span>
+
+              <span className="text-slate-300">
+                |
+              </span>
+
               <button
                 type="button"
                 onClick={collapseAll}
@@ -427,14 +799,21 @@ export default function PackageFormComp({
             type="button"
             onClick={addMenuField}
             className="px-4 py-2 rounded-xl text-xs text-white shadow-sm"
-            style={{ backgroundColor: "#85004E" }}
+            style={{
+              backgroundColor: "#85004E",
+            }}
           >
             + افزودن منوی جدید
           </button>
         </div>
 
+        {/* =====================================================
+            MENU ACCORDIONS
+        ====================================================== */}
+
         {menus.map((menu, mIdx) => {
-          const isOpen = openMenuIndexes.includes(mIdx);
+          const isOpen =
+            openMenuIndexes.includes(mIdx);
 
           return (
             <div
@@ -442,8 +821,11 @@ export default function PackageFormComp({
               className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm transition-all"
             >
               {/* Header */}
+
               <div
-                onClick={() => toggleAccordion(mIdx)}
+                onClick={() =>
+                  toggleAccordion(mIdx)
+                }
                 className="flex justify-between items-center p-4 bg-slate-50/80 hover:bg-slate-100/80 cursor-pointer select-none transition-colors border-b border-slate-100"
               >
                 <div className="flex items-center gap-3">
@@ -456,29 +838,46 @@ export default function PackageFormComp({
                   >
                     {mIdx + 1}
                   </span>
+
                   <span className="text-sm font-bold text-slate-800">
-                    {menu.title || `منوی شماره ${mIdx + 1}`}
+                    {menu.title ||
+                      `منوی شماره ${mIdx + 1}`}
                   </span>
+
                   <span className="text-xs text-slate-400">
-                    ({menu.items.filter((i) => i.title.trim()).length} آیتم)
+                    (
+                    {
+                      menu.items.filter(
+                        (i) =>
+                          i.title.trim()
+                      ).length
+                    }{" "}
+                    آیتم)
                   </span>
                 </div>
 
                 <div
                   className="flex items-center gap-4"
-                  onClick={(e) => e.stopPropagation()}
+                  onClick={(e) =>
+                    e.stopPropagation()
+                  }
                 >
                   {menus.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeMenuField(mIdx)}
+                      onClick={() =>
+                        removeMenuField(mIdx)
+                      }
                       className="text-red-500 text-xs hover:underline"
                     >
                       حذف منو
                     </button>
                   )}
+
                   <span
-                    onClick={() => toggleAccordion(mIdx)}
+                    onClick={() =>
+                      toggleAccordion(mIdx)
+                    }
                     className="text-slate-400 hover:text-slate-600 text-sm font-bold px-2"
                   >
                     {isOpen ? "▲" : "▼"}
@@ -486,196 +885,276 @@ export default function PackageFormComp({
                 </div>
               </div>
 
-              {/* Body */}
+              {/* =====================================================
+                  MENU BODY
+              ====================================================== */}
+
               {isOpen && (
                 <div className="p-6 space-y-5 bg-white">
+                  {/* Menu title */}
+
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">
                       عنوان منو
                     </label>
+
                     <input
                       type="text"
                       required
                       placeholder="مثلا: منوی شماره ۱ (اقتصادی)"
                       value={menu.title}
                       onChange={(e) =>
-                        updateMenuField(mIdx, "title", e.target.value)
+                        updateMenuField(
+                          mIdx,
+                          "title",
+                          e.target.value
+                        )
                       }
                       className="w-full border border-slate-200 rounded-xl p-2.5 text-sm"
                     />
                   </div>
 
-                  {/* Dynamic Pricing Tiers */}
+                  {/* =====================================================
+                      PRICING TIERS
+                  ====================================================== */}
+
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-3">
                     <div className="flex justify-between items-center">
                       <label className="block text-xs text-slate-700 font-bold">
-                        سطوح قیمت و ظرفیت مهمان (Pricing Tiers)
+                        سطوح قیمت و ظرفیت مهمان
+                        (Pricing Tiers)
                       </label>
+
                       <button
                         type="button"
-                        onClick={() => addPriceTier(mIdx)}
+                        onClick={() =>
+                          addPriceTier(mIdx)
+                        }
                         className="text-xs text-[#85004E] font-bold hover:underline"
                       >
                         + افزودن پله قیمت
                       </button>
                     </div>
 
-                    {menu.pricingTiers.map((tier, tIdx) => (
-                      <div
-                        key={tIdx}
-                        className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-slate-200"
-                      >
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="ظرفیت (مثلا: از ۶۰ نفر تا ۱۲۰ نفر)"
-                            value={tier.guestCapacity}
-                            onChange={(e) =>
-                              updatePriceTier(
-                                mIdx,
-                                tIdx,
-                                "guestCapacity",
-                                e.target.value
-                              )
-                            }
-                            className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
-                          />
+                    {menu.pricingTiers.map(
+                      (tier, tIdx) => (
+                        <div
+                          key={tIdx}
+                          className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-slate-200"
+                        >
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              placeholder="ظرفیت (مثلا: از ۶۰ نفر تا ۱۲۰ نفر)"
+                              value={
+                                tier.guestCapacity
+                              }
+                              onChange={(e) =>
+                                updatePriceTier(
+                                  mIdx,
+                                  tIdx,
+                                  "guestCapacity",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
+                            />
+                          </div>
+
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              required
+                              placeholder="قیمت (مثلا: ۷۵,۰۰۰,۰۰۰ تومان)"
+                              value={tier.price}
+                              onChange={(e) =>
+                                updatePriceTier(
+                                  mIdx,
+                                  tIdx,
+                                  "price",
+                                  e.target.value
+                                )
+                              }
+                              className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
+                            />
+                          </div>
+
+                          {menu
+                            .pricingTiers
+                            .length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removePriceTier(
+                                  mIdx,
+                                  tIdx
+                                )
+                              }
+                              className="text-red-500 hover:text-red-700 text-xs px-1"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            placeholder="قیمت (مثلا: ۷۵,۰۰۰,۰۰۰ تومان)"
-                            value={tier.price}
-                            onChange={(e) =>
-                              updatePriceTier(
-                                mIdx,
-                                tIdx,
-                                "price",
-                                e.target.value
-                              )
-                            }
-                            className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
-                          />
-                        </div>
-                        {menu.pricingTiers.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removePriceTier(mIdx, tIdx)}
-                            className="text-red-500 hover:text-red-700 text-xs px-1"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                      )
+                    )}
                   </div>
+
+                  {/* Menu description */}
 
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">
                       توضیحات منو
                     </label>
+
                     <textarea
                       placeholder="توضیحات اضافی مربوط به این منو"
                       value={menu.description}
                       onChange={(e) =>
-                        updateMenuField(mIdx, "description", e.target.value)
+                        updateMenuField(
+                          mIdx,
+                          "description",
+                          e.target.value
+                        )
                       }
                       className="w-full border border-slate-200 rounded-xl p-2.5 text-sm"
                     />
                   </div>
 
-                  {/* Items list */}
+                  {/* =====================================================
+                      ITEMS
+                  ====================================================== */}
+
                   <div className="pt-2">
                     <div className="flex justify-between items-center mb-2">
                       <label className="block text-xs text-slate-600 font-bold">
-                        آیتم‌های منو (عنوان و توضیح)
+                        آیتم‌های منو (عنوان و
+                        توضیح)
                       </label>
+
                       <span className="text-[11px] text-slate-400">
-                        کلید{" "}
                         <kbd className="px-1 py-0.5 text-[10px] bg-slate-100 border rounded">
                           Enter
                         </kbd>{" "}
-                        برای جابجایی سریع
+                        خط جدید
+                        {"  |  "}
+                        <kbd className="px-1 py-0.5 text-[10px] bg-slate-100 border rounded">
+                          Shift + Enter
+                        </kbd>{" "}
+                        آیتم بعدی
                       </span>
                     </div>
 
                     <div className="space-y-4 max-h-[500px] overflow-y-auto pl-1 pr-1">
-                      {menu.items.map((item, iIdx) => (
-                        <div
-                          key={iIdx}
-                          className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5 relative"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs text-slate-500 font-bold font-mono">
-                              آیتم {iIdx + 1}
-                            </span>
-                            {menu.items.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeMenuItem(mIdx, iIdx)}
-                                className="px-2 py-1 text-red-500 hover:text-red-700 text-xs border border-slate-200 rounded-lg hover:bg-red-50 bg-white transition-colors"
-                              >
-                                ✕ حذف آیتم
-                              </button>
-                            )}
-                          </div>
+                      {menu.items.map(
+                        (item, iIdx) => (
+                          <div
+                            key={iIdx}
+                            className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5 relative"
+                          >
+                            {/* Item header */}
 
-                          <div>
-                            <input
-                              ref={(el) => {
-                                itemInputRefs.current[
-                                  `${mIdx}-${iIdx}-title`
-                                ] = el;
-                              }}
-                              type="text"
-                              placeholder="عنوان (مثلاً: کریسپی چیکن)"
-                              value={item.title}
-                              onKeyDown={(e) =>
-                                handleKeyDownItem(e, mIdx, iIdx, "title")
-                              }
-                              onChange={(e) =>
-                                updateMenuItem(
-                                  mIdx,
-                                  iIdx,
-                                  "title",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none"
-                            />
-                          </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-slate-500 font-bold font-mono">
+                                آیتم{" "}
+                                {iIdx + 1}
+                              </span>
 
-                          <div>
-                            <textarea
-                              ref={(el) => {
-                                itemInputRefs.current[
-                                  `${mIdx}-${iIdx}-description`
-                                ] = el;
-                              }}
-                              rows={2}
-                              placeholder="توضیحات اختیاری (مثلاً: همراه با سس مخصوص)"
-                              value={item.description || ""}
-                              onKeyDown={(e) =>
-                                handleKeyDownItem(e, mIdx, iIdx, "description")
-                              }
-                              onChange={(e) =>
-                                updateMenuItem(
-                                  mIdx,
-                                  iIdx,
-                                  "description",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none resize-y"
-                            />
+                              {menu.items.length >
+                                1 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeMenuItem(
+                                      mIdx,
+                                      iIdx
+                                    )
+                                  }
+                                  className="px-2 py-1 text-red-500 hover:text-red-700 text-xs border border-slate-200 rounded-lg hover:bg-red-50 bg-white transition-colors"
+                                >
+                                  ✕ حذف آیتم
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Title */}
+
+                            <div>
+                              <input
+                                ref={(el) => {
+                                  itemInputRefs.current[
+                                    `${mIdx}-${iIdx}-title`
+                                  ] = el;
+                                }}
+                                type="text"
+                                placeholder="عنوان (مثلاً: کریسپی چیکن)"
+                                value={
+                                  item.title
+                                }
+                                onKeyDown={(e) =>
+                                  handleKeyDownItem(
+                                    e,
+                                    mIdx,
+                                    iIdx,
+                                    "title"
+                                  )
+                                }
+                                onChange={(e) =>
+                                  updateMenuItem(
+                                    mIdx,
+                                    iIdx,
+                                    "title",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none"
+                              />
+                            </div>
+
+                            {/* Description */}
+
+                            <div>
+                              <textarea
+                                ref={(el) => {
+                                  itemInputRefs.current[
+                                    `${mIdx}-${iIdx}-description`
+                                  ] = el;
+                                }}
+                                rows={2}
+                                placeholder="توضیحات اختیاری (مثلاً: همراه با سس مخصوص)"
+                                value={
+                                  item.description ||
+                                  ""
+                                }
+                                onKeyDown={(e) =>
+                                  handleKeyDownItem(
+                                    e,
+                                    mIdx,
+                                    iIdx,
+                                    "description"
+                                  )
+                                }
+                                onChange={(e) =>
+                                  updateMenuItem(
+                                    mIdx,
+                                    iIdx,
+                                    "description",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none resize-y"
+                              />
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => addMenuItem(mIdx)}
+                      onClick={() =>
+                        addMenuItem(mIdx)
+                      }
                       className="mt-3 text-xs text-[#85004E] font-bold hover:underline flex items-center gap-1"
                     >
                       + افزودن آیتم جدید
@@ -688,7 +1167,10 @@ export default function PackageFormComp({
         })}
       </div>
 
-      {/* Buttons */}
+      {/* =====================================================
+          FOOTER BUTTONS
+      ====================================================== */}
+
       <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
         <button
           type="button"
@@ -697,11 +1179,16 @@ export default function PackageFormComp({
         >
           انصراف
         </button>
+
         <button
           type="submit"
-          disabled={submitting || Boolean(slugError)}
+          disabled={
+            submitting || Boolean(slugError)
+          }
           className="px-8 py-3 rounded-xl text-xs text-white shadow-lg disabled:opacity-50"
-          style={{ backgroundColor: "#85004E" }}
+          style={{
+            backgroundColor: "#85004E",
+          }}
         >
           {submitting
             ? "در حال ذخیره..."
