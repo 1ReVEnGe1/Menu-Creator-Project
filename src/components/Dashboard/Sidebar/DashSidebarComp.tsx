@@ -14,7 +14,7 @@ export interface MenuItem {
 interface DashSidebarCompProps {
   role: string;
   permissions: string[];
-  isOnMobile : boolean
+  isOnMobile: boolean;
 }
 
 const menuItems: MenuItem[] = [
@@ -22,7 +22,6 @@ const menuItems: MenuItem[] = [
     url: "/dashboard",
     title: "داشبورد",
     hasChild: false,
-    // بدون module یعنی برای همه کاربران لاگین‌شده قابل مشاهده است
   },
   {
     url: "/dashboard/users",
@@ -44,20 +43,18 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-const DashSidebarComp = ({ role, permissions = [], isOnMobile }: DashSidebarCompProps) => {
-  const {setSidebarOpen} = useDashboard()
-
+const DashSidebarComp = ({
+  role,
+  permissions = [],
+  isOnMobile,
+}: DashSidebarCompProps) => {
+  const { setSidebarOpen } = useDashboard();
   const pathname = usePathname();
 
   const filteredMenuItems = menuItems.filter((item) => {
-    // ۱. اگر SUPER_ADMIN باشد همه منوها را ببیند
     if (role === "SUPER_ADMIN") return true;
-
-    // ۲. اگر آیتم منو نیازی به ماژول خاصی ندارد (مثل خانه/داشبورد اصلی)
     if (!item.module) return true;
 
-    // ۳. بررسی وجود حداقل یک پرمیشن مربوط به این ماژول در لیست دسترسی‌های کاربر
-    // مثلاً اگر module === "users" باشد، وجود "users:read"، "users:write" یا "users" را چک می‌کند
     const hasModuleAccess = permissions.some((perm) => {
       const [permModule] = perm.split(":");
       return permModule === item.module || perm === item.module;
@@ -76,16 +73,26 @@ const DashSidebarComp = ({ role, permissions = [], isOnMobile }: DashSidebarComp
             <li key={menuItem.url}>
               <Link
                 href={menuItem.url}
-                onClick={()=> {
-                  if(isOnMobile){
-                    setSidebarOpen(false)
+                onClick={() => {
+                  if (isOnMobile) {
+                    setSidebarOpen(false);
                   }
                 }}
-                className={`flex items-center gap-3 ${isOnMobile ? 'px-2 py-2 text-sm' : 'px-4 py-3'} rounded-xl transition-all duration-200 font-medium ${
+                className={`flex items-center gap-3 ${
+                  isOnMobile ? "px-2 py-2 text-sm" : "px-4 py-3"
+                } rounded-xl transition-all duration-200 font-medium ${
                   isActive
-                    ? "bg-indigo-50 text-indigo-600 font-semibold"
+                    ? "font-semibold"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: "#85004E12",
+                        color: "#85004E",
+                      }
+                    : undefined
+                }
               >
                 <span>{menuItem.title}</span>
               </Link>

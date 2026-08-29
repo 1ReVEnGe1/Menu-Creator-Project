@@ -58,29 +58,38 @@ const AccessControlPage = async () => {
   const { roles, stats } = await getRolesData();
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div
+      className="p-4 sm:p-6 lg:p-8 text-right min-h-screen bg-slate-50 text-slate-800 rounded-2xl space-y-6"
+      dir="rtl"
+    >
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-100 pb-5">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
             مدیریت نقش‌ها و دسترسی‌ها
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
             تنظیم و مانیتورینگ سطوح دسترسی کاربران سیستم
           </p>
         </div>
-        <Link
-          href={"/dashboard/access-control/roles/new-role"}
-          className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm shadow-indigo-100 flex items-center gap-2"
-        >
-          <span>افزودن نقش جدید</span>
-        </Link>
-        <Link
-          href={"/dashboard/access-control/permissions"}
-          className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm shadow-indigo-100 flex items-center gap-2"
-        >
-          <span>مدیریت دسترسی ها</span>
-        </Link>
+
+        <div className="flex flex-col  items-center gap-2.5 w-full sm:w-auto">
+          <Link
+            href={"/dashboard/access-control/roles/new-role"}
+            className="w-full px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl text-white shadow-md hover:shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-bold"
+            style={{ backgroundColor: "#85004E" }}
+          >
+            <span className="text-base sm:text-lg leading-none">+</span>
+            <span>افزودن نقش جدید</span>
+          </Link>
+
+          <Link
+            href={"/dashboard/access-control/permissions"}
+            className="w-full px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl sm:rounded-2xl text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all flex items-center justify-center gap-2 text-xs sm:text-sm font-bold border border-slate-200"
+          >
+            <span>مدیریت دسترسی‌ها</span>
+          </Link>
+        </div>
       </div>
 
       {/* پاس دادن داده‌ها به کامپوننت کلاینت */}

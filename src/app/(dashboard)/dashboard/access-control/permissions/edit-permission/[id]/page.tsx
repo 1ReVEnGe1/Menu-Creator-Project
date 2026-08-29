@@ -41,7 +41,7 @@ const EditPermissionPage = async ({ params }: EditPermissionPageProps) => {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className=" mx-auto">
       {/* استفاده مجدد از کامپوننت فرم در حالت edit */}
       <PermissionFormComp 
         initialData={permissionData} 

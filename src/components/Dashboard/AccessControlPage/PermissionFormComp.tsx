@@ -16,21 +16,18 @@ type PermissionFormCompProps = {
   mode: "create" | "edit";
 };
 
-// لیست چند ماژول پیش‌فرض برای راحتی انتخاب کاربر (می‌توانی تغییرش دهی)
 const AVAILABLE_MODULES = ["users", "packages"];
 
 const PermissionFormComp = ({ initialData, mode }: PermissionFormCompProps) => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  // وضعیت فیلدهای فرم
   const [formData, setFormData] = useState<Omit<InitialDataType, "_id">>({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    module: initialData?.module || "users", // ماژول پیش‌فرض
+    module: initialData?.module || "users",
   });
 
-  // ارسال داده‌ها به API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim() || !formData.module.trim()) {
@@ -39,9 +36,10 @@ const PermissionFormComp = ({ initialData, mode }: PermissionFormCompProps) => {
 
     setLoading(true);
     try {
-      const url = mode === "create"
-        ? "/api/private/permissions/add-permission/"
-        : `/api/private/permissions/edit-permission/${initialData?._id}`;
+      const url =
+        mode === "create"
+          ? "/api/private/permissions/add-permission/"
+          : `/api/private/permissions/edit-permission/${initialData?._id}`;
 
       const method = mode === "create" ? "POST" : "PUT";
 
@@ -50,9 +48,8 @@ const PermissionFormComp = ({ initialData, mode }: PermissionFormCompProps) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          // استانداردسازی نام پرمیشن (مثال: read:users یا CREATE_PRODUCT)
-          name: formData.name.trim(), 
-          module: formData.module.toLowerCase().trim()
+          name: formData.name.trim(),
+          module: formData.module.toLowerCase().trim(),
         }),
       });
 
@@ -73,28 +70,28 @@ const PermissionFormComp = ({ initialData, mode }: PermissionFormCompProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6" dir="rtl">
-      
-      {/* هدر فرم */}
-      <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
+      {/* هدر */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">
-            {mode === "create" ? "ایجاد سطح دسترسی (Permission) جدید" : `ویرایش دسترسی ${initialData?.name}`}
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            {mode === "create"
+              ? "ایجاد سطح دسترسی جدید"
+              : `ویرایش دسترسی ${initialData?.name}`}
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            یک کلید دسترسی جدید برای فیلتر کردن عملیات کاربران در سیستم بسازید.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            یک کلید دسترسی جدید برای فیلتر کردن عملیات کاربران بسازید.
           </p>
         </div>
-        <Link 
-          href="/dashboard/access-control/permissions" 
-          className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 px-3 py-2 rounded-xl transition-all"
+        <Link
+          href="/dashboard/access-control/permissions"
+          className="w-full sm:w-auto text-center text-xs sm:text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2.5 rounded-xl sm:rounded-2xl transition-all border border-slate-200"
         >
           بازگشت
         </Link>
       </div>
 
-      {/* باکس اصلی فرم */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-        
+      {/* فرم */}
+      <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm space-y-4">
         {/* ۱. نام کلید دسترسی */}
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-2">
@@ -102,46 +99,55 @@ const PermissionFormComp = ({ initialData, mode }: PermissionFormCompProps) => {
           </label>
           <input
             type="text"
-            placeholder="users:read or products:write"
+            placeholder="users:read یا packages:write"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all outline-none text-sm text-left"
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none transition-all text-sm text-left"
             dir="ltr"
           />
         </div>
 
-        {/* ۲. انتخاب یا نوشتن ماژول */}
+        {/* ۲. ماژول */}
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-2">
             ماژول مربوطه (Module)
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <select
-              value={AVAILABLE_MODULES.includes(formData.module) ? formData.module : "custom"}
+              value={
+                AVAILABLE_MODULES.includes(formData.module)
+                  ? formData.module
+                  : "custom"
+              }
               onChange={(e) => {
                 if (e.target.value !== "custom") {
                   setFormData({ ...formData, module: e.target.value });
                 }
               }}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:border-indigo-500"
+              className="px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm outline-none shrink-0"
             >
               {AVAILABLE_MODULES.map((mod) => (
-                <option key={mod} value={mod}>{mod}</option>
+                <option key={mod} value={mod}>
+                  {mod}
+                </option>
               ))}
               <option value="custom">سایر ماژول‌ها...</option>
             </select>
 
             <input
               type="text"
-              placeholder="نام ماژول (مثلا: پادکست)"
+              placeholder="نام ماژول..."
               value={formData.module}
-              onChange={(e) => setFormData({ ...formData, module: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all outline-none text-sm text-left"
+              onChange={(e) =>
+                setFormData({ ...formData, module: e.target.value })
+              }
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none transition-all text-sm text-left"
+              dir="ltr"
             />
           </div>
         </div>
 
-        {/* ۳. توضیحات فارسی */}
+        {/* ۳. توضیحات */}
         <div>
           <label className="block text-xs font-semibold text-slate-500 mb-2">
             توضیحات (جهت نمایش به مدیر در ماتریکس دسترسی‌ها)
@@ -150,17 +156,18 @@ const PermissionFormComp = ({ initialData, mode }: PermissionFormCompProps) => {
             type="text"
             placeholder="مثال: اجازه مشاهده لیست کاربران سیستم"
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all outline-none text-sm text-right"
+            onChange={(e) =>
+              setFormData({ ...formData, description: e.target.value })
+            }
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none transition-all text-sm text-right"
           />
         </div>
-
       </div>
 
       {/* دکمه‌ها */}
       <div className="flex items-center justify-end gap-3 pt-2">
-        <Link 
-          href="/dashboard/access-control" 
+        <Link
+          href="/dashboard/access-control/permissions"
           className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 transition-all"
         >
           انصراف
@@ -168,12 +175,16 @@ const PermissionFormComp = ({ initialData, mode }: PermissionFormCompProps) => {
         <button
           type="submit"
           disabled={loading}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 shadow-md shadow-indigo-100"
+          className="text-white px-6 py-2.5 rounded-xl sm:rounded-2xl text-sm font-bold shadow-md hover:opacity-95 transition-all disabled:opacity-50"
+          style={{ backgroundColor: "#85004E" }}
         >
-          {loading ? "در حال ثبت..." : mode === "create" ? "ایجاد پرمیشن" : "اعمال تغییرات"}
+          {loading
+            ? "در حال ثبت..."
+            : mode === "create"
+            ? "ایجاد پرمیشن"
+            : "اعمال تغییرات"}
         </button>
       </div>
-
     </form>
   );
 };

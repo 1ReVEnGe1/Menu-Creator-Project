@@ -3,7 +3,7 @@ import PermissionFormComp from "@/components/Dashboard/AccessControlPage/Permiss
 
 const NewPermissionPage = () => {
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className=" mx-auto">
       <PermissionFormComp mode="create" />
     </div>
   );

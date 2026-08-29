@@ -241,6 +241,11 @@ export default function PackageFormComp({
   };
 
   const removeMenuField = (index: number) => {
+    const confirmDeleteMenu = confirm('مطمئنی که میخوای منو رو پاک کنی؟ ')   
+    if(!confirmDeleteMenu){
+      return 
+    }
+
     setMenus((prev) =>
       prev.filter((_, i) => i !== index)
     );
@@ -422,13 +427,6 @@ export default function PackageFormComp({
 
   // =========================================================
   // KEYBOARD NAVIGATION
-  //
-  // TITLE:
-  // Enter -> Description
-  //
-  // DESCRIPTION:
-  // Enter -> New line
-  // Shift + Enter -> Next item
   // =========================================================
 
   const handleKeyDownItem = (
@@ -439,14 +437,9 @@ export default function PackageFormComp({
     itemIdx: number,
     fieldType: "title" | "description"
   ) => {
-    // فقط Enter
     if (e.key !== "Enter") {
       return;
     }
-
-    // =====================================================
-    // TITLE
-    // =====================================================
 
     if (fieldType === "title") {
       e.preventDefault();
@@ -454,13 +447,9 @@ export default function PackageFormComp({
       const title =
         menus[menuIdx].items[itemIdx].title;
 
-      // اگر عنوان خالی است، حرکت نکن
       if (!title.trim()) {
         return;
       }
-
-      // Enter در Title
-      // -> Description همان آیتم
 
       itemInputRefs.current[
         `${menuIdx}-${itemIdx}-description`
@@ -469,32 +458,14 @@ export default function PackageFormComp({
       return;
     }
 
-    // =====================================================
-    // DESCRIPTION
-    // =====================================================
-
-    // اگر Shift نگرفته شده:
-    //
-    // Enter معمولی
-    // -> اجازه بده textarea خودش خط جدید بسازد
-    //
-    // اینجا عمداً preventDefault نمی‌کنیم.
-
     if (!e.shiftKey) {
       return;
     }
-
-    // =====================================================
-    // SHIFT + ENTER
-    //
-    // -> آیتم بعدی
-    // =====================================================
 
     e.preventDefault();
 
     const nextItemIdx = itemIdx + 1;
 
-    // اگر آیتم بعدی وجود دارد
     if (
       nextItemIdx <
       menus[menuIdx].items.length
@@ -507,12 +478,6 @@ export default function PackageFormComp({
 
       return;
     }
-
-    // =====================================================
-    // اگر آخرین آیتم بود
-    // -> ساخت آیتم جدید
-    // -> Focus روی Title آیتم جدید
-    // =====================================================
 
     setMenus((prev) => {
       const updated = [...prev];
@@ -605,10 +570,6 @@ export default function PackageFormComp({
         }
       }
 
-      // =====================================================
-      // PACKAGE
-      // =====================================================
-
       const pkgUrl =
         mode === "create"
           ? "/api/private/packages/add-package"
@@ -663,20 +624,20 @@ export default function PackageFormComp({
   return (
     <form
       onSubmit={handleSubmitPackage}
-      className="space-y-8"
+      className="space-y-6 sm:space-y-8 text-right"
+      dir="rtl"
     >
       {/* =====================================================
           PACKAGE INFORMATION
       ====================================================== */}
 
-      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+      <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 space-y-4">
         <h3 className="text-slate-700 text-sm font-bold">
           ۱. مشخصات پکیج اصلی
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Package title */}
-
           <div>
             <label className="block text-xs text-slate-600 mb-1">
               عنوان پکیج (فارسی)
@@ -695,7 +656,6 @@ export default function PackageFormComp({
           </div>
 
           {/* Slug */}
-
           <div>
             <label className="block text-xs text-slate-600 mb-1">
               نام یکتا در آدرس / Slug (انگلیسی)
@@ -732,7 +692,6 @@ export default function PackageFormComp({
           </div>
 
           {/* Category */}
-
           <div>
             <label className="block text-xs text-slate-600 mb-1">
               نوع پکیج
@@ -766,8 +725,8 @@ export default function PackageFormComp({
       ====================================================== */}
 
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <h3 className="text-slate-700 text-sm font-bold">
               ۲. منوهای زیرمجموعه این پکیج
             </h3>
@@ -798,7 +757,7 @@ export default function PackageFormComp({
           <button
             type="button"
             onClick={addMenuField}
-            className="px-4 py-2 rounded-xl text-xs text-white shadow-sm"
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs text-white shadow-sm font-bold shrink-0"
             style={{
               backgroundColor: "#85004E",
             }}
@@ -821,16 +780,15 @@ export default function PackageFormComp({
               className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm transition-all"
             >
               {/* Header */}
-
               <div
                 onClick={() =>
                   toggleAccordion(mIdx)
                 }
-                className="flex justify-between items-center p-4 bg-slate-50/80 hover:bg-slate-100/80 cursor-pointer select-none transition-colors border-b border-slate-100"
+                className="flex justify-between items-center p-3.5 sm:p-4 bg-slate-50/80 hover:bg-slate-100/80 cursor-pointer select-none transition-colors border-b border-slate-100 gap-2"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 truncate">
                   <span
-                    className={`text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold ${
+                    className={`text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold shrink-0 ${
                       isOpen
                         ? "bg-[#85004E] text-white"
                         : "bg-slate-200 text-slate-600"
@@ -839,12 +797,12 @@ export default function PackageFormComp({
                     {mIdx + 1}
                   </span>
 
-                  <span className="text-sm font-bold text-slate-800">
+                  <span className="text-xs sm:text-sm font-bold text-slate-800 truncate">
                     {menu.title ||
                       `منوی شماره ${mIdx + 1}`}
                   </span>
 
-                  <span className="text-xs text-slate-400">
+                  <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">
                     (
                     {
                       menu.items.filter(
@@ -857,7 +815,7 @@ export default function PackageFormComp({
                 </div>
 
                 <div
-                  className="flex items-center gap-4"
+                  className="flex items-center gap-2 sm:gap-4 shrink-0"
                   onClick={(e) =>
                     e.stopPropagation()
                   }
@@ -878,7 +836,7 @@ export default function PackageFormComp({
                     onClick={() =>
                       toggleAccordion(mIdx)
                     }
-                    className="text-slate-400 hover:text-slate-600 text-sm font-bold px-2"
+                    className="text-slate-400 hover:text-slate-600 text-xs sm:text-sm font-bold px-1"
                   >
                     {isOpen ? "▲" : "▼"}
                   </span>
@@ -890,9 +848,8 @@ export default function PackageFormComp({
               ====================================================== */}
 
               {isOpen && (
-                <div className="p-6 space-y-5 bg-white">
+                <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-white">
                   {/* Menu title */}
-
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">
                       عنوان منو
@@ -918,11 +875,10 @@ export default function PackageFormComp({
                       PRICING TIERS
                   ====================================================== */}
 
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-3">
+                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200/60 space-y-3">
                     <div className="flex justify-between items-center">
                       <label className="block text-xs text-slate-700 font-bold">
                         سطوح قیمت و ظرفیت مهمان
-                        (Pricing Tiers)
                       </label>
 
                       <button
@@ -940,7 +896,7 @@ export default function PackageFormComp({
                       (tier, tIdx) => (
                         <div
                           key={tIdx}
-                          className="flex items-center gap-3 bg-white p-2.5 rounded-lg border border-slate-200"
+                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 bg-white p-2.5 rounded-lg border border-slate-200 relative"
                         >
                           <div className="flex-1">
                             <input
@@ -961,7 +917,7 @@ export default function PackageFormComp({
                             />
                           </div>
 
-                          <div className="flex-1">
+                          <div className="flex-1 flex items-center gap-2">
                             <input
                               type="text"
                               required
@@ -977,31 +933,28 @@ export default function PackageFormComp({
                               }
                               className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
                             />
-                          </div>
 
-                          {menu
-                            .pricingTiers
-                            .length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removePriceTier(
-                                  mIdx,
-                                  tIdx
-                                )
-                              }
-                              className="text-red-500 hover:text-red-700 text-xs px-1"
-                            >
-                              ✕
-                            </button>
-                          )}
+                            {menu.pricingTiers.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  removePriceTier(
+                                    mIdx,
+                                    tIdx
+                                  )
+                                }
+                                className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-100 sm:border-0 hover:bg-red-50 sm:hover:bg-transparent"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )
                     )}
                   </div>
 
                   {/* Menu description */}
-
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">
                       توضیحات منو
@@ -1026,42 +979,39 @@ export default function PackageFormComp({
                   ====================================================== */}
 
                   <div className="pt-2">
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
                       <label className="block text-xs text-slate-600 font-bold">
-                        آیتم‌های منو (عنوان و
-                        توضیح)
+                        آیتم‌های منو (عنوان و توضیح)
                       </label>
 
-                      <span className="text-[11px] text-slate-400">
-                        <kbd className="px-1 py-0.5 text-[10px] bg-slate-100 border rounded">
+                      <span className="text-[10px] sm:text-[11px] text-slate-400">
+                        <kbd className="px-1 py-0.5 text-[9px] sm:text-[10px] bg-slate-100 border rounded">
                           Enter
                         </kbd>{" "}
                         خط جدید
                         {"  |  "}
-                        <kbd className="px-1 py-0.5 text-[10px] bg-slate-100 border rounded">
+                        <kbd className="px-1 py-0.5 text-[9px] sm:text-[10px] bg-slate-100 border rounded">
                           Shift + Enter
                         </kbd>{" "}
                         آیتم بعدی
                       </span>
                     </div>
 
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pl-1 pr-1">
+                    <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[500px] overflow-y-auto pl-1 pr-1">
                       {menu.items.map(
                         (item, iIdx) => (
                           <div
                             key={iIdx}
-                            className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2.5 relative"
+                            className="bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200 space-y-2 relative"
                           >
                             {/* Item header */}
-
                             <div className="flex justify-between items-center">
                               <span className="text-xs text-slate-500 font-bold font-mono">
                                 آیتم{" "}
                                 {iIdx + 1}
                               </span>
 
-                              {menu.items.length >
-                                1 && (
+                              {menu.items.length > 1 && (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -1078,7 +1028,6 @@ export default function PackageFormComp({
                             </div>
 
                             {/* Title */}
-
                             <div>
                               <input
                                 ref={(el) => {
@@ -1112,7 +1061,6 @@ export default function PackageFormComp({
                             </div>
 
                             {/* Description */}
-
                             <div>
                               <textarea
                                 ref={(el) => {
@@ -1171,11 +1119,11 @@ export default function PackageFormComp({
           FOOTER BUTTONS
       ====================================================== */}
 
-      <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+      <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={onClose}
-          className="px-6 py-3 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+          className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
         >
           انصراف
         </button>
@@ -1185,7 +1133,7 @@ export default function PackageFormComp({
           disabled={
             submitting || Boolean(slugError)
           }
-          className="px-8 py-3 rounded-xl text-xs text-white shadow-lg disabled:opacity-50"
+          className="w-full sm:w-auto px-8 py-2.5 sm:py-3 rounded-xl text-xs text-white shadow-lg disabled:opacity-50 font-bold"
           style={{
             backgroundColor: "#85004E",
           }}

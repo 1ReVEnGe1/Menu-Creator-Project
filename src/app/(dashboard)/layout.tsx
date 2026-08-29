@@ -6,7 +6,6 @@ import React from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
-import { CgClose } from "react-icons/cg";
 import MobileSidebarComp from "@/components/Dashboard/MobileSIdebar/MobileSidebarComp";
 import { DashboardProvider } from "@/components/Providers/DashboardContext";
 
@@ -25,20 +24,29 @@ export default async function DashboardLayout({
     <DashboardProvider>
       <section className="flex flex-col md:flex-row-reverse min-h-screen bg-slate-50 text-slate-800">
         {/* سایدبار */}
-        <aside className="w-full  md:w-64 bg-white border-l border-slate-200 p-6 hidden md:flex flex-col justify-between">
+        <aside className="w-full md:w-64 bg-white border-l border-slate-200 p-6 hidden md:flex flex-col justify-between">
           <div>
             {/* لوگو */}
             <div className="mb-8 px-4">
-              <h2 className="text-xl font-bold text-indigo-600">پنل مدیریت</h2>
+              <h2
+                className="text-xl font-bold"
+                style={{ color: "#85004E" }}
+              >
+                پنل مدیریت
+              </h2>
               <p className="text-xs text-slate-400 mt-1">مدیریت هوشمند سیستم</p>
               <Link
-                className="mt-4 block bg-gray-100 w-fit py-1 px-3 hover:bg-gray-200 text-sm rounded-xl text-blue-600"
+                className="mt-4 inline-block font-semibold py-1.5 px-3 hover:opacity-90 text-xs rounded-xl transition-all"
+                style={{
+                  backgroundColor: "#85004E12",
+                  color: "#85004E",
+                }}
                 href={"/"}
               >
                 مشاهده سایت
               </Link>
             </div>
-            <hr className="border border-gray-200" />
+            <hr className="border border-slate-100" />
 
             {/* منوی ناوبری پویا */}
             <DashSidebarComp
@@ -64,7 +72,7 @@ export default async function DashboardLayout({
         <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
           <DashHeader fullname={session.user.fullname} />
 
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-h-100">
+          <div className="bg-white rounded-2xl p-2 md:p-6 shadow-sm border border-slate-100 min-h-100">
             {children}
           </div>
         </main>

@@ -48,7 +48,6 @@ const UsersPageComp = ({
   const canDeleteUsers =
     isSuperAdmin || userPermissions.includes("users:delete");
 
-  // آیا اصلاً ستون عملیات باید نمایش داده شود؟
   const canManageUsers = canEditUsers || canDeleteUsers;
 
   // ==========================================
@@ -56,7 +55,6 @@ const UsersPageComp = ({
   // ==========================================
 
   const handleDeleteUser = async (user: UserType) => {
-    // ۱. گرفتن تاییدیه دوم از کاربر
     const confirmDelete = window.confirm(
       `آیا از حذف کاربر «${user.fullname}» مطمئن هستید؟ این عملیات غیرقابل بازگشت است.`
     );
@@ -73,10 +71,8 @@ const UsersPageComp = ({
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // حذف از لیست استیت
         setUsers((prevUsers) => prevUsers.filter((u) => u._id !== user._id));
 
-        // به‌روزرسانی لحظه‌ای آمار
         setStats((prevStats) => ({
           total: prevStats.total - 1,
           active: user.isActive ? prevStats.active - 1 : prevStats.active,
@@ -105,59 +101,62 @@ const UsersPageComp = ({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       {/* ==========================================
           Stats
       ========================================== */}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Users */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-slate-400">
               کل کاربران سیستم
             </p>
 
-            <h3 className="text-2xl font-bold text-slate-800 mt-1">
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mt-1">
               {stats.total} نفر
             </h3>
           </div>
 
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-lg">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg shrink-0"
+            style={{ backgroundColor: "#85004E12" }}
+          >
             👥
           </div>
         </div>
 
         {/* Active Users */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-slate-400">
               کل کاربران فعال
             </p>
 
-            <h3 className="text-2xl font-bold text-emerald-600 mt-1">
+            <h3 className="text-xl sm:text-2xl font-bold text-emerald-600 mt-1">
               {stats.active} نفر
             </h3>
           </div>
 
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-lg">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-lg shrink-0">
             🟢
           </div>
         </div>
 
         {/* Inactive Users */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-slate-400">
               کل کاربران غیرفعال
             </p>
 
-            <h3 className="text-2xl font-bold text-rose-600 mt-1">
+            <h3 className="text-xl sm:text-2xl font-bold text-rose-600 mt-1">
               {stats.inactive} نفر
             </h3>
           </div>
 
-          <div className="w-12 h-12 rounded-xl bg-rose-50 flex items-center justify-center text-lg">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center text-lg shrink-0">
             🔴
           </div>
         </div>
@@ -167,14 +166,17 @@ const UsersPageComp = ({
           Search
       ========================================== */}
 
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
+      <div className="bg-white p-4 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="relative w-full sm:w-80">
           <input
             type="text"
-            placeholder="جستجوی نام، تلفن یا ایمیل در این صفحه..."
+            placeholder="جستجوی نام، تلفن یا ایمیل..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all outline-none text-sm text-slate-700 text-right"
+            className="w-full pl-4 pr-10 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 transition-all text-sm text-slate-700 text-right"
+            style={{
+              borderColor: undefined,
+            }}
           />
 
           <span className="absolute right-3 top-3 text-slate-400 text-sm">
@@ -191,24 +193,17 @@ const UsersPageComp = ({
           Desktop Table
       ========================================== */}
 
-      <div className="hidden md:block bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="hidden md:block bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-right border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs font-semibold">
                 <th className="p-4 pr-6">کاربر</th>
-
                 <th className="p-4">شماره همراه</th>
-
                 <th className="p-4">ایمیل</th>
-
                 <th className="p-4">نقش کاربری</th>
-
                 <th className="p-4">وضعیت</th>
-
                 <th className="p-4">تاریخ عضویت</th>
-
-                {/* فقط در صورت داشتن Permission */}
                 {canManageUsers && (
                   <th className="p-4 pl-6 text-left">عملیات</th>
                 )}
@@ -225,7 +220,10 @@ const UsersPageComp = ({
                     {/* User */}
                     <td className="p-4 pr-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-linear-to-tr from-indigo-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                        <div
+                          className="w-10 h-10 rounded-full text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
+                          style={{ backgroundColor: "#85004E" }}
+                        >
                           {user.fullname?.[0] || "?"}
                         </div>
 
@@ -235,23 +233,35 @@ const UsersPageComp = ({
                           </p>
 
                           <p className="text-xs text-slate-400 mt-0.5">
-                            {user._id.slice(-6)}#
+                            #{user._id.slice(-6)}
                           </p>
                         </div>
                       </div>
                     </td>
 
                     {/* Phone */}
-                    <td className="p-4 text-xs text-slate-600">{user.phone}</td>
+                    <td className="p-4 text-xs text-slate-600 font-mono">
+                      {user.phone}
+                    </td>
 
                     {/* Email */}
-                    <td className="p-4 text-slate-500 text-xs">{user.email || "-"}</td>
+                    <td className="p-4 text-slate-500 text-xs">
+                      {user.email || "-"}
+                    </td>
 
                     {/* Role */}
                     <td className="p-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100/50">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
-
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                        style={{
+                          backgroundColor: "#85004E12",
+                          color: "#85004E",
+                        }}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: "#85004E" }}
+                        />
                         {user.role}
                       </span>
                     </td>
@@ -270,7 +280,6 @@ const UsersPageComp = ({
                             user.isActive ? "bg-emerald-500" : "bg-rose-500"
                           }`}
                         />
-
                         {user.isActive ? "فعال" : "غیرفعال"}
                       </span>
                     </td>
@@ -288,7 +297,7 @@ const UsersPageComp = ({
                           {canEditUsers && (
                             <Link
                               href={`/dashboard/users/edit-user/${user._id}`}
-                              className="text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                             >
                               ویرایش
                             </Link>
@@ -300,9 +309,9 @@ const UsersPageComp = ({
                               type="button"
                               onClick={() => handleDeleteUser(user)}
                               disabled={deletingId === user._id}
-                              className="text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                             >
-                              {deletingId === user._id ? "در حال حذف..." : "حذف"}
+                              {deletingId === user._id ? "..." : "حذف"}
                             </button>
                           )}
                         </div>
@@ -314,9 +323,9 @@ const UsersPageComp = ({
                 <tr>
                   <td
                     colSpan={canManageUsers ? 7 : 6}
-                    className="p-8 text-center text-slate-400"
+                    className="p-8 text-center text-slate-400 text-sm"
                   >
-                    کاربری با این مشخصات یافت نشد. 😕
+                    کاربری با این مشخصات یافت نشد.
                   </td>
                 </tr>
               )}
@@ -334,46 +343,48 @@ const UsersPageComp = ({
           filteredUsers.map((user) => (
             <div
               key={user._id}
-              className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-4"
+              className="bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm space-y-4"
             >
               {/* User Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-linear-to-tr from-indigo-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                  <div
+                    className="w-10 h-10 rounded-full text-white flex items-center justify-center font-bold text-sm shadow-sm shrink-0"
+                    style={{ backgroundColor: "#85004E" }}
+                  >
                     {user.fullname?.[0] || "?"}
                   </div>
 
                   <div>
-                    <h4 className="font-bold text-slate-800">
+                    <h4 className="font-bold text-slate-800 text-sm">
                       {user.fullname}
                     </h4>
 
-                    <span className="text-xs text-slate-400 font-mono">
-                      {user._id.slice(-6)}#
+                    <span className="text-[11px] text-slate-400 font-mono">
+                      #{user._id.slice(-6)}
                     </span>
                   </div>
                 </div>
 
                 {/* Status */}
                 <span
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium ${
                     user.isActive
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-rose-50 text-rose-700"
+                      ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                      : "bg-rose-50 text-rose-700 border border-rose-100"
                   }`}
                 >
                   {user.isActive ? "فعال" : "غیرفعال"}
                 </span>
               </div>
 
-              <hr className="border-slate-50" />
+              <hr className="border-slate-100" />
 
               {/* User Info */}
               <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
                 {/* Phone */}
                 <div>
                   <span className="text-slate-400 block mb-0.5">تلفن:</span>
-
                   <span className="font-mono text-slate-700">{user.phone}</span>
                 </div>
 
@@ -382,8 +393,10 @@ const UsersPageComp = ({
                   <span className="text-slate-400 block mb-0.5">
                     نقش کاربری:
                   </span>
-
-                  <span className="font-semibold text-indigo-700">
+                  <span
+                    className="font-bold"
+                    style={{ color: "#85004E" }}
+                  >
                     {user.role}
                   </span>
                 </div>
@@ -391,8 +404,9 @@ const UsersPageComp = ({
                 {/* Email */}
                 <div className="col-span-2">
                   <span className="text-slate-400 block mb-0.5">ایمیل:</span>
-
-                  <span className="text-slate-600 break-all">{user.email || "-"}</span>
+                  <span className="text-slate-600 break-all">
+                    {user.email || "-"}
+                  </span>
                 </div>
 
                 {/* Created At */}
@@ -400,7 +414,6 @@ const UsersPageComp = ({
                   <span className="text-slate-400 block mb-0.5">
                     تاریخ ثبت نام:
                   </span>
-
                   <span className="text-slate-600">{user.createdAt}</span>
                 </div>
               </div>
@@ -408,14 +421,14 @@ const UsersPageComp = ({
               {/* Mobile Actions */}
               {canManageUsers && (
                 <>
-                  <hr className="border-slate-50" />
+                  <hr className="border-slate-100" />
 
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center justify-end gap-2 pt-1">
                     {/* Edit */}
                     {canEditUsers && (
                       <Link
                         href={`/dashboard/users/edit-user/${user._id}`}
-                        className="flex-1 text-center text-indigo-600 bg-indigo-50/50 hover:bg-indigo-50 py-2 rounded-xl text-xs font-semibold transition-all"
+                        className="flex-1 text-center py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
                       >
                         ویرایش
                       </Link>
@@ -427,7 +440,7 @@ const UsersPageComp = ({
                         type="button"
                         onClick={() => handleDeleteUser(user)}
                         disabled={deletingId === user._id}
-                        className="flex-1 text-center text-rose-600 bg-rose-50/50 hover:bg-rose-50 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+                        className="flex-1 text-center py-2 rounded-xl text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                       >
                         {deletingId === user._id ? "در حال حذف..." : "حذف"}
                       </button>
@@ -438,8 +451,8 @@ const UsersPageComp = ({
             </div>
           ))
         ) : (
-          <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm text-center text-slate-400">
-            کاربری با این مشخصات یافت نشد. 😕
+          <div className="bg-white p-8 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm text-center text-slate-400 text-sm">
+            کاربری با این مشخصات یافت نشد.
           </div>
         )}
       </div>

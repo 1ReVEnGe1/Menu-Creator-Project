@@ -1,23 +1,18 @@
-
-import { auth } from "@/auth"
-import PackagesPageComp from "@/components/Dashboard/PackagesPage/PackagesPageComp"
-
-import { redirect } from "next/navigation"
-
+import { auth } from "@/auth";
+import PackagesPageComp from "@/components/Dashboard/PackagesPage/PackagesPageComp";
+import { redirect } from "next/navigation";
 
 const PackagesPage = async () => {
-  const session = await auth()
-  if(!session || !session.user){
-    redirect('/')
+  const session = await auth();
+  if (!session || !session.user) {
+    redirect('/');
   }
-
 
   return (
     <>
-
-      <PackagesPageComp userPermissions = {session.user.permissions} />
+      <PackagesPageComp userPermissions={session.user.permissions} />
     </>
-  )
-}
+  );
+};
 
-export default PackagesPage
+export default PackagesPage;
