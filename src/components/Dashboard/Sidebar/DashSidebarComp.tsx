@@ -1,7 +1,7 @@
 "use client";
 
 import { useDashboard } from "@/hools/useDashboard";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 export interface MenuItem {
@@ -95,6 +95,8 @@ const DashSidebarComp = ({
                 }
               >
                 <span>{menuItem.title}</span>
+
+                <NavPendingIndicator />
               </Link>
             </li>
           );
@@ -105,3 +107,16 @@ const DashSidebarComp = ({
 };
 
 export default DashSidebarComp;
+
+function NavPendingIndicator() {
+  const { pending } = useLinkStatus();
+
+  return (
+    <span
+      className={`mr-auto w-4 h-4 border-2 border-current border-t-transparent rounded-full transition-opacity ${
+        pending ? "opacity-100 animate-spin" : "opacity-0"
+      }`}
+      aria-hidden="true"
+    />
+  );
+}

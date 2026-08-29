@@ -6,7 +6,8 @@ import PackageFormComp, {
   IPriceTier,
 } from "@/components/Dashboard/PackageForm/PackageFormComp";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface MenuData {
@@ -27,13 +28,26 @@ interface PackageData {
 
 interface PackagesPageCompProps {
   userPermissions: string[];
+  initialPackages: PackageData[];
 }
 
 export default function PackagesPageComp({
   userPermissions,
+  initialPackages,
 }: PackagesPageCompProps) {
-  const [packages, setPackages] = useState<PackageData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  const [packages, setPackages] = useState<PackageData[]>(initialPackages);
+
+  // Sync local state whenever router.refresh() brings fresh server data.
+  useEffect(() => {
+    setPackages(initialPackages);
+  }, [initialPackages]);
+
+  const handleRefreshPackages = () => {
+    router.refresh();
+  };
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // وضعیت‌های مدال و کامپوننت فرم
@@ -43,29 +57,6 @@ export default function PackagesPageComp({
     IPackageInitialData | undefined
   >(undefined);
 
-  useEffect(() => {
-    fetchPackages();
-  }, []);
-
-  const fetchPackages = async () => {
-    try {
-      const res = await fetch("/api/private/packages");
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(
-          errorData?.message || "خطا در گرفتن پکیج‌ها. دوباره امتحان کنید",
-        );
-      }
-      const data = await res.json();
-      setPackages(data.data || []);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : "خطای سرور در دریافت پکیج‌ها";
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenCreateModal = () => {
     setFormMode("create");
@@ -102,6 +93,7 @@ export default function PackagesPageComp({
       if (res.ok && data.success) {
         setPackages((prev) => prev.filter((pkg) => pkg._id !== id));
         toast.success("پکیج با موفقیت حذف شد.");
+        router.refresh();
       } else {
         toast.error(data.message || "خطا در حذف پکیج");
       }
@@ -141,11 +133,7 @@ export default function PackagesPageComp({
       </div>
 
       {/* لیست پکیج‌ها */}
-      {loading ? (
-        <div className="text-center py-16 sm:py-20 text-slate-400 text-sm">
-          در حال بارگذاری پکیج‌ها...
-        </div>
-      ) : packages.length === 0 ? (
+      {packages.length === 0 ? (
         <div className="bg-white p-8 sm:p-16 text-center rounded-2xl sm:rounded-3xl border border-dashed border-slate-300 text-slate-400 text-sm">
           هنوز هیچ پکیجی ثبت نشده است. روی «افزودن پکیج جدید» کلیک کنید.
         </div>
@@ -302,7 +290,7 @@ export default function PackagesPageComp({
             <PackageFormComp
               mode={formMode}
               initialData={selectedPackage}
-              onSuccess={fetchPackages}
+              onSuccess={handleRefreshPackages}
               onClose={() => setIsModalOpen(false)}
             />
           </div>
