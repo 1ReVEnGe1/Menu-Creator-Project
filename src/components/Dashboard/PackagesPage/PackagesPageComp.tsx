@@ -177,11 +177,12 @@ export default function PackagesPageComp({
                 {pkg.slug && (
                   <div className="mb-4">
                     <Link
-                      href={`${process.env.NEXT_PUBLIC_BASE_URL}/?menu=${pkg._id}`}
+                      href={`/packages/${pkg.slug}`}
+                      target="_blank"
                       style={{ direction: "ltr" }}
                       className="inline-block text-xs text-left truncate text-blue-700 underline max-w-full"
                     >
-                      مشاهده منو
+                      مشاهده پکیج
                     </Link>
                   </div>
                 )}
