@@ -4,10 +4,19 @@ import type {
   IMenuData,
   IPackageData,
 } from "@/types/publicPackages";
+
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+
+import { useSearchParams } from "next/navigation";
+
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import { useSession } from "next-auth/react";
+
 
 interface PackageNavigationItem {
   _id: string;
@@ -15,51 +24,344 @@ interface PackageNavigationItem {
   slug: string;
 }
 
+
 interface PackageDetailsClientProps {
   packages: PackageNavigationItem[];
   activePackage: IPackageData;
 }
 
+
 export default function PackageDetailsClientComp({
   packages,
   activePackage,
 }: PackageDetailsClientProps) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  const { status } = useSession();
-  const activePackageLinkRef = useRef<HTMLAnchorElement | null>(null);
+
+  const searchParams =
+    useSearchParams();
+
+  const { status } =
+    useSession();
+
+  const activePackageLinkRef =
+    useRef<HTMLAnchorElement | null>(
+      null
+    );
+
+  const initializedMenuHistory =
+    useRef(false);
+
+
+  /* ==========================================
+     CURRENT PACKAGE
+  ========================================== */
+
+  const currentMenus =
+    activePackage.menus || [];
+
+
+  /* ==========================================
+     POPUP STATE
+  ========================================== */
+
+  const initialMenuId =
+    searchParams.get("menu");
+
+
+  const [
+    selectedMenuId,
+    setSelectedMenuId,
+  ] = useState<string | null>(
+    initialMenuId
+  );
+
+
+  const selectedMenu:
+    IMenuData | null =
+    selectedMenuId
+
+      ? currentMenus.find(
+          (menu) =>
+            menu._id ===
+            selectedMenuId
+        ) || null
+
+      : null;
+
+
+  /* ==========================================
+     NAVIGATION SCROLL
+  ========================================== */
 
   useEffect(() => {
-    activePackageLinkRef.current?.scrollIntoView({
-      behavior: "auto",
-      block: "nearest",
-      inline: "center",
-    });
-  }, [activePackage._id]);
+    activePackageLinkRef
+      .current
+      ?.scrollIntoView({
+        behavior: "auto",
+        block: "nearest",
+        inline: "center",
+      });
+  }, [
+    activePackage._id,
+  ]);
 
-  const currentMenus = activePackage.menus || [];
-  const menuIdParam = searchParams.get("menu");
 
-  // منو فقط باید از داخل پکیج فعلی پیدا شود.
-  const selectedMenu: IMenuData | null = menuIdParam
-    ? currentMenus.find((menu) => menu._id === menuIdParam) || null
-    : null;
+  /* ==========================================
+     URL BUILDER
+  ========================================== */
 
-  // Popup منو مثل قبل با ?menu=ID باز می‌شود.
-  const handleOpenMenu = (id: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("menu", id);
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  const buildMenuUrl = (
+    menuId?: string | null
+  ) => {
+
+    const url =
+      new URL(
+        window.location.href
+      );
+
+    if (menuId) {
+
+      url.searchParams.set(
+        "menu",
+        menuId
+      );
+
+    } else {
+
+      url.searchParams.delete(
+        "menu"
+      );
+
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
   };
 
-  const handleCloseMenu = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("menu");
 
-    const query = params.toString();
-    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  /* ==========================================
+     DIRECT LINK HISTORY FIX
+
+     اگر کاربر مستقیم وارد:
+     ?menu=ID
+     شد،
+
+     اولین Back فقط Popup را می‌بندد.
+  ========================================== */
+
+  useEffect(() => {
+
+    if (
+      initializedMenuHistory.current
+    ) {
+      return;
+    }
+
+    initializedMenuHistory.current =
+      true;
+
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+
+    const menuId =
+      params.get(
+        "menu"
+      );
+
+
+    if (!menuId) {
+      return;
+    }
+
+
+    const menuUrl =
+      buildMenuUrl(
+        menuId
+      );
+
+
+    const baseUrl =
+      buildMenuUrl(
+        null
+      );
+
+
+    window.history.replaceState(
+      null,
+      "",
+      baseUrl
+    );
+
+
+    window.history.pushState(
+      null,
+      "",
+      menuUrl
+    );
+
+  }, []);
+
+
+  /* ==========================================
+     SEARCH PARAM → STATE
+  ========================================== */
+
+  useEffect(() => {
+
+    const menuId =
+      searchParams.get(
+        "menu"
+      );
+
+
+    setSelectedMenuId(
+      menuId
+    );
+
+  }, [
+    searchParams,
+  ]);
+
+
+  /* ==========================================
+     BROWSER BACK / FORWARD
+  ========================================== */
+
+  useEffect(() => {
+
+    const handlePopState =
+      () => {
+
+        const params =
+          new URLSearchParams(
+            window.location.search
+          );
+
+
+        setSelectedMenuId(
+          params.get(
+            "menu"
+          )
+        );
+
+      };
+
+
+    window.addEventListener(
+      "popstate",
+      handlePopState
+    );
+
+
+    return () => {
+
+      window.removeEventListener(
+        "popstate",
+        handlePopState
+      );
+
+    };
+
+  }, []);
+
+
+  /* ==========================================
+     OPEN MENU
+  ========================================== */
+
+  const handleOpenMenu = (
+    id: string
+  ) => {
+
+    const alreadyOpen =
+      Boolean(
+        selectedMenuId
+      );
+
+
+    /*
+     * مهم‌ترین قسمت:
+     *
+     * Popup همین لحظه باز می‌شود.
+     */
+    setSelectedMenuId(
+      id
+    );
+
+
+    const newUrl =
+      buildMenuUrl(
+        id
+      );
+
+
+    if (alreadyOpen) {
+
+      /*
+       * Menu A → Menu B
+       *
+       * History اضافه نساز.
+       */
+      window.history.replaceState(
+        null,
+        "",
+        newUrl
+      );
+
+    } else {
+
+      /*
+       * صفحه → Popup
+       *
+       * History بساز تا Back
+       * Popup را ببندد.
+       */
+      window.history.pushState(
+        null,
+        "",
+        newUrl
+      );
+
+    }
   };
+
+
+  /* ==========================================
+     CLOSE MENU
+  ========================================== */
+
+  const handleCloseMenu =
+    () => {
+
+      /*
+       * UI فوری
+       */
+      setSelectedMenuId(
+        null
+      );
+
+
+      const baseUrl =
+        buildMenuUrl(
+          null
+        );
+
+
+      /*
+       * Close Button نباید
+       * کاربر را از سایت خارج کند.
+       */
+      window.history.replaceState(
+        null,
+        "",
+        baseUrl
+      );
+    };
+
+
+  // از اینجا return UI فعلی خودت
 
   return (
     <>
