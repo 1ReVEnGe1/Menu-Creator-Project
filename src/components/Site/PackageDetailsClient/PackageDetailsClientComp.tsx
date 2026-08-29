@@ -9,8 +9,14 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 
+interface PackageNavigationItem {
+  _id: string;
+  title: string;
+  slug: string;
+}
+
 interface PackageDetailsClientProps {
-  packages: IPackageData[];
+  packages: PackageNavigationItem[];
   activePackage: IPackageData;
 }
 
