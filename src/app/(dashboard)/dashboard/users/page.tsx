@@ -1,13 +1,23 @@
 import { auth } from "@/auth";
 import UsersPageComp from "@/components/Dashboard/UsersPage/UsersPageComp";
 import Link from "next/link";
-
 import { redirect } from "next/navigation";
 import { getUsersData } from "utils/getUsers";
+import { Suspense } from "react";
+import { connection } from "next/server";
 
 const LIMIT = 10;
 
-const UsersPage = async () => {
+const UsersPage = () => {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-slate-400">در حال بارگذاری...</div>}>
+      <UsersContent />
+    </Suspense>
+  );
+};
+
+const UsersContent = async () => {
+  await connection();
   const session = await auth();
 
   if (!session || !session.user) {
@@ -27,7 +37,6 @@ const UsersPage = async () => {
       className="p-4 sm:p-6 lg:p-8 text-right min-h-screen bg-slate-50 text-slate-800 rounded-2xl space-y-6"
       dir="rtl"
     >
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
@@ -50,7 +59,6 @@ const UsersPage = async () => {
         )}
       </div>
 
-      {/* لیست کاربران و آمار */}
       <UsersPageComp
         userRole={userRole}
         userPermissions={userPermissions}

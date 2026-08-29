@@ -2,21 +2,20 @@ import PermissionFormComp from "@/components/Dashboard/AccessControlPage/Permiss
 import connectDB from "lib/db";
 import { Permission } from "models/Permission";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { connection } from "next/server";
 
-// تایپ مربوط به پارامترهای آدرس در نکست‌جی‌اس
 interface EditPermissionPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-// واکشی اطلاعات پرمیشن از دیتابیس بر اساس آیدی
 const getPermissionData = async (id: string) => {
   try {
     await connectDB();
     const perm = await Permission.findById(id).lean();
-    
-    
+
     if (!perm) return null;
 
     return {
@@ -31,22 +30,26 @@ const getPermissionData = async (id: string) => {
   }
 };
 
-const EditPermissionPage = async ({ params }: EditPermissionPageProps) => {
-  const permissionId = (await params).id
+const EditPermissionPage = ({ params }: EditPermissionPageProps) => {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-slate-400">در حال بارگذاری...</div>}>
+      <EditPermissionContent params={params} />
+    </Suspense>
+  );
+};
+
+const EditPermissionContent = async ({ params }: EditPermissionPageProps) => {
+  await connection();
+  const { id: permissionId } = await params;
   const permissionData = await getPermissionData(permissionId);
 
-  // اگر پرمیشنی با این آیدی پیدا نشد، ارور ۴۰۴ نکست‌جی‌اس را نشان بده
   if (!permissionData) {
     notFound();
   }
 
   return (
-    <div className=" mx-auto">
-      {/* استفاده مجدد از کامپوننت فرم در حالت edit */}
-      <PermissionFormComp 
-        initialData={permissionData} 
-        mode="edit" 
-      />
+    <div className="mx-auto">
+      <PermissionFormComp initialData={permissionData} mode="edit" />
     </div>
   );
 };

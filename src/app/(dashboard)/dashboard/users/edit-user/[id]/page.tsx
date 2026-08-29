@@ -2,8 +2,9 @@ import UserFormComp from "@/components/Dashboard/UserForm/UserFormComp";
 import connectDB from "lib/db";
 import { Role } from "models/Role";
 import User from "models/User";
-
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { connection } from "next/server";
 
 interface EditUserPageProps {
   params: Promise<{
@@ -11,7 +12,6 @@ interface EditUserPageProps {
   }>;
 }
 
-// ۱. دریافت تمام نقش‌های موجود
 const getRoles = async () => {
   await connectDB();
   const roles = await Role.find().lean();
@@ -23,7 +23,6 @@ const getRoles = async () => {
   }));
 };
 
-// ۲. دریافت اطلاعات کاربر بر اساس ID
 const getUserData = async (id: string) => {
   try {
     await connectDB();
@@ -45,8 +44,17 @@ const getUserData = async (id: string) => {
   }
 };
 
-const EditUserPage = async ({ params }: EditUserPageProps) => {
-  const userId = (await params).id;
+const EditUserPage = ({ params }: EditUserPageProps) => {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm text-slate-400">در حال بارگذاری...</div>}>
+      <EditUserContent params={params} />
+    </Suspense>
+  );
+};
+
+const EditUserContent = async ({ params }: EditUserPageProps) => {
+  await connection();
+  const { id: userId } = await params;
 
   const [allRoles, userData] = await Promise.all([
     getRoles(),
