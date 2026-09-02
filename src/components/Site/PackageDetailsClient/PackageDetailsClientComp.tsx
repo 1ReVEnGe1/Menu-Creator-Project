@@ -309,7 +309,7 @@ export default function PackageDetailsClientComp({
                               قیمت ({item.guestCapacity})
                             </span>
                             <span className="text-xl font-black text-white tracking-tight">
-                              {item.price}
+                              {item.price} تومان
                             </span>
                           </div>
                         ))
