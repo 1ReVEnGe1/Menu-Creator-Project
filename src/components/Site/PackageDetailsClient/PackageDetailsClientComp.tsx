@@ -1,22 +1,14 @@
 "use client";
 
-import type {
-  IMenuData,
-  IPackageData,
-} from "@/types/publicPackages";
+import type { IMenuData, IPackageData } from "@/types/publicPackages";
 
 import Link from "next/link";
 
 import { useSearchParams } from "next/navigation";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useSession } from "next-auth/react";
-
 
 interface PackageNavigationItem {
   _id: string;
@@ -24,118 +16,70 @@ interface PackageNavigationItem {
   slug: string;
 }
 
-
 interface PackageDetailsClientProps {
   packages: PackageNavigationItem[];
   activePackage: IPackageData;
 }
 
-
 export default function PackageDetailsClientComp({
   packages,
   activePackage,
 }: PackageDetailsClientProps) {
+  const searchParams = useSearchParams();
 
-  const searchParams =
-    useSearchParams();
+  const { status } = useSession();
 
-  const { status } =
-    useSession();
+  const activePackageLinkRef = useRef<HTMLAnchorElement | null>(null);
 
-  const activePackageLinkRef =
-    useRef<HTMLAnchorElement | null>(
-      null
-    );
-
-  const initializedMenuHistory =
-    useRef(false);
-
+  const initializedMenuHistory = useRef(false);
 
   /* ==========================================
      CURRENT PACKAGE
   ========================================== */
 
-  const currentMenus =
-    activePackage.menus || [];
-
+  const currentMenus = activePackage.menus || [];
 
   /* ==========================================
      POPUP STATE
   ========================================== */
 
-  const initialMenuId =
-    searchParams.get("menu");
+  const initialMenuId = searchParams.get("menu");
 
-
-  const [
-    selectedMenuId,
-    setSelectedMenuId,
-  ] = useState<string | null>(
-    initialMenuId
+  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(
+    initialMenuId,
   );
 
-
-  const selectedMenu:
-    IMenuData | null =
-    selectedMenuId
-
-      ? currentMenus.find(
-          (menu) =>
-            menu._id ===
-            selectedMenuId
-        ) || null
-
-      : null;
-
+  const selectedMenu: IMenuData | null = selectedMenuId
+    ? currentMenus.find((menu) => menu._id === selectedMenuId) || null
+    : null;
 
   /* ==========================================
      NAVIGATION SCROLL
   ========================================== */
 
   useEffect(() => {
-    activePackageLinkRef
-      .current
-      ?.scrollIntoView({
-        behavior: "auto",
-        block: "nearest",
-        inline: "center",
-      });
-  }, [
-    activePackage._id,
-  ]);
-
+    activePackageLinkRef.current?.scrollIntoView({
+      behavior: "auto",
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activePackage._id]);
 
   /* ==========================================
      URL BUILDER
   ========================================== */
 
-  const buildMenuUrl = (
-    menuId?: string | null
-  ) => {
-
-    const url =
-      new URL(
-        window.location.href
-      );
+  const buildMenuUrl = (menuId?: string | null) => {
+    const url = new URL(window.location.href);
 
     if (menuId) {
-
-      url.searchParams.set(
-        "menu",
-        menuId
-      );
-
+      url.searchParams.set("menu", menuId);
     } else {
-
-      url.searchParams.delete(
-        "menu"
-      );
-
+      url.searchParams.delete("menu");
     }
 
     return `${url.pathname}${url.search}${url.hash}`;
   };
-
 
   /* ==========================================
      DIRECT LINK HISTORY FIX
@@ -148,218 +92,109 @@ export default function PackageDetailsClientComp({
   ========================================== */
 
   useEffect(() => {
-
-    if (
-      initializedMenuHistory.current
-    ) {
+    if (initializedMenuHistory.current) {
       return;
     }
 
-    initializedMenuHistory.current =
-      true;
+    initializedMenuHistory.current = true;
 
+    const params = new URLSearchParams(window.location.search);
 
-    const params =
-      new URLSearchParams(
-        window.location.search
-      );
-
-
-    const menuId =
-      params.get(
-        "menu"
-      );
-
+    const menuId = params.get("menu");
 
     if (!menuId) {
       return;
     }
 
+    const menuUrl = buildMenuUrl(menuId);
 
-    const menuUrl =
-      buildMenuUrl(
-        menuId
-      );
+    const baseUrl = buildMenuUrl(null);
 
+    window.history.replaceState(null, "", baseUrl);
 
-    const baseUrl =
-      buildMenuUrl(
-        null
-      );
-
-
-    window.history.replaceState(
-      null,
-      "",
-      baseUrl
-    );
-
-
-    window.history.pushState(
-      null,
-      "",
-      menuUrl
-    );
-
+    window.history.pushState(null, "", menuUrl);
   }, []);
-
 
   /* ==========================================
      SEARCH PARAM → STATE
   ========================================== */
 
   useEffect(() => {
+    const menuId = searchParams.get("menu");
 
-    const menuId =
-      searchParams.get(
-        "menu"
-      );
-
-
-    setSelectedMenuId(
-      menuId
-    );
-
-  }, [
-    searchParams,
-  ]);
-
+    setSelectedMenuId(menuId);
+  }, [searchParams]);
 
   /* ==========================================
      BROWSER BACK / FORWARD
   ========================================== */
 
   useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
 
-    const handlePopState =
-      () => {
-
-        const params =
-          new URLSearchParams(
-            window.location.search
-          );
-
-
-        setSelectedMenuId(
-          params.get(
-            "menu"
-          )
-        );
-
-      };
-
-
-    window.addEventListener(
-      "popstate",
-      handlePopState
-    );
-
-
-    return () => {
-
-      window.removeEventListener(
-        "popstate",
-        handlePopState
-      );
-
+      setSelectedMenuId(params.get("menu"));
     };
 
-  }, []);
+    window.addEventListener("popstate", handlePopState);
 
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   /* ==========================================
      OPEN MENU
   ========================================== */
 
-  const handleOpenMenu = (
-    id: string
-  ) => {
-
-    const alreadyOpen =
-      Boolean(
-        selectedMenuId
-      );
-
+  const handleOpenMenu = (id: string) => {
+    const alreadyOpen = Boolean(selectedMenuId);
 
     /*
      * مهم‌ترین قسمت:
      *
      * Popup همین لحظه باز می‌شود.
      */
-    setSelectedMenuId(
-      id
-    );
+    setSelectedMenuId(id);
 
-
-    const newUrl =
-      buildMenuUrl(
-        id
-      );
-
+    const newUrl = buildMenuUrl(id);
 
     if (alreadyOpen) {
-
       /*
        * Menu A → Menu B
        *
        * History اضافه نساز.
        */
-      window.history.replaceState(
-        null,
-        "",
-        newUrl
-      );
-
+      window.history.replaceState(null, "", newUrl);
     } else {
-
       /*
        * صفحه → Popup
        *
        * History بساز تا Back
        * Popup را ببندد.
        */
-      window.history.pushState(
-        null,
-        "",
-        newUrl
-      );
-
+      window.history.pushState(null, "", newUrl);
     }
   };
-
 
   /* ==========================================
      CLOSE MENU
   ========================================== */
 
-  const handleCloseMenu =
-    () => {
+  const handleCloseMenu = () => {
+    /*
+     * UI فوری
+     */
+    setSelectedMenuId(null);
 
-      /*
-       * UI فوری
-       */
-      setSelectedMenuId(
-        null
-      );
+    const baseUrl = buildMenuUrl(null);
 
-
-      const baseUrl =
-        buildMenuUrl(
-          null
-        );
-
-
-      /*
-       * Close Button نباید
-       * کاربر را از سایت خارج کند.
-       */
-      window.history.replaceState(
-        null,
-        "",
-        baseUrl
-      );
-    };
-
+    /*
+     * Close Button نباید
+     * کاربر را از سایت خارج کند.
+     */
+    window.history.replaceState(null, "", baseUrl);
+  };
 
   // از اینجا return UI فعلی خودت
 
@@ -395,7 +230,7 @@ export default function PackageDetailsClientComp({
         <div className="flex justify-between items-center mb-5 px-1">
           <div className="flex items-center gap-2.5">
             <h2 className="text-base font-black text-white tracking-tight">
-              منوی {activePackage.title}
+             منوهای {activePackage.title}
             </h2>
             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/10 text-zinc-200 border border-white/10">
               {currentMenus.length}
