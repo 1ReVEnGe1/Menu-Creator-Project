@@ -2,6 +2,8 @@
 
 import type { IMenuData, IPackageData } from "@/types/publicPackages";
 
+import { createPortal } from "react-dom";
+
 import Link from "next/link";
 
 import { useSearchParams } from "next/navigation";
@@ -25,6 +27,8 @@ export default function PackageDetailsClientComp({
   packages,
   activePackage,
 }: PackageDetailsClientProps) {
+  const [mounted, setMounted] = useState(false);
+
   const searchParams = useSearchParams();
 
   const { status } = useSession();
@@ -32,6 +36,14 @@ export default function PackageDetailsClientComp({
   const activePackageLinkRef = useRef<HTMLAnchorElement | null>(null);
 
   const initializedMenuHistory = useRef(false);
+
+  /* ==========================================
+     MAKE SURE COMPONENT RENDERED
+  ========================================== */
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   /* ==========================================
      CURRENT PACKAGE
@@ -52,6 +64,22 @@ export default function PackageDetailsClientComp({
   const selectedMenu: IMenuData | null = selectedMenuId
     ? currentMenus.find((menu) => menu._id === selectedMenuId) || null
     : null;
+
+  /* ==========================================
+     PREVENT BODY SCROLL WHEN POPUP IS OPEN
+  ========================================== */
+
+  useEffect(() => {
+    if (selectedMenuId) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedMenuId]);
 
   /* ==========================================
      NAVIGATION SCROLL
@@ -230,7 +258,7 @@ export default function PackageDetailsClientComp({
         <div className="flex justify-between items-center mb-5 px-1">
           <div className="flex items-center gap-2.5">
             <h2 className="text-base font-black text-white tracking-tight">
-             منوهای {activePackage.title}
+              منوهای {activePackage.title}
             </h2>
             <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/10 text-zinc-200 border border-white/10">
               {currentMenus.length}
@@ -360,99 +388,103 @@ export default function PackageDetailsClientComp({
       </footer>
 
       {/* Liquid Sheet Drawer Modal */}
-      <div
-        className={`fixed inset-0 bg-black/75 backdrop-blur-2xl z-50 transition-all duration-300 flex items-end justify-center ${
-          selectedMenu
-            ? "opacity-100 pointer-events-auto"
-            : "opacity-0 pointer-events-none"
-        }`}
-        onClick={handleCloseMenu}
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className={`w-full max-w-md bg-[#0a060d]/80 border-t border-white/20 rounded-t-[36px] p-6 pb-8 max-h-[85vh] overflow-y-auto backdrop-blur-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.8)] transition-transform duration-300 ease-out relative ${
-            selectedMenu ? "translate-y-0" : "translate-y-full"
-          }`}
-        >
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 rounded-b-full bg-white/30 blur-[1px]" />
-          <div className="w-12 h-1 rounded-full bg-white/20 mx-auto mb-6" />
+      {mounted &&
+        createPortal(
+          <div
+            className={`fixed inset-0 bg-black/75 backdrop-blur-2xl z-50 transition-all duration-300 flex items-end justify-center ${
+              selectedMenu
+                ? "opacity-100 pointer-events-auto"
+                : "opacity-0 pointer-events-none"
+            }`}
+            onClick={handleCloseMenu}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className={`w-full max-w-md bg-[#0a060d]/80 border-t border-white/20 rounded-t-[36px] p-6 pb-8 max-h-[85vh] overflow-y-auto backdrop-blur-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.8)] transition-transform duration-300 ease-out relative ${
+                selectedMenu ? "translate-y-0" : "translate-y-full"
+              }`}
+            >
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 rounded-b-full bg-white/30 blur-[1px]" />
+              <div className="w-12 h-1 rounded-full bg-white/20 mx-auto mb-6" />
 
-          {selectedMenu && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-2xl font-black text-white">
-                    {selectedMenu.title}
-                  </h2>
-                </div>
-                <button
-                  onClick={handleCloseMenu}
-                  className="w-9 h-9 rounded-2xl bg-white/10 border border-white/15 text-zinc-300 flex items-center justify-center text-xs hover:text-white hover:bg-white/20 transition-all"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {selectedMenu.description && (
-                <p className="whitespace-pre-line text-zinc-200 text-xs leading-relaxed bg-white/4 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
-                  {selectedMenu.description}
-                </p>
-              )}
-
-              <div>
-                <h4 className="text-xs font-black text-zinc-400 mb-3.5">
-                  جزئیات و آیتم‌های منو:
-                </h4>
-                <div className="space-y-2.5">
-                  {selectedMenu.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-3.5 rounded-2xl bg-white/3 border border-white/10 text-xs text-zinc-200 backdrop-blur-md"
+              {selectedMenu && (
+                <div className="space-y-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h2 className="text-2xl font-black text-white">
+                        {selectedMenu.title}
+                      </h2>
+                    </div>
+                    <button
+                      onClick={handleCloseMenu}
+                      className="w-9 h-9 rounded-2xl bg-white/10 border border-white/15 text-zinc-300 flex items-center justify-center text-xs hover:text-white hover:bg-white/20 transition-all"
                     >
-                      <div className="w-6 h-6 rounded-xl bg-[#85004E]/40 text-[#f4a1d5] flex items-center justify-center text-xs font-black border border-[#85004E]/60 shrink-0 shadow-sm mt-0.5">
-                        ✓
-                      </div>
-                      <div className="flex-1">
-                        <span className="font-bold text-white block">
-                          {item.title}
-                        </span>
-                        {item.description && (
-                          <p className="text-[11px] text-zinc-400 font-normal mt-1 leading-relaxed whitespace-pre-line">
-                            {item.description}
-                          </p>
-                        )}
+                      ✕
+                    </button>
+                  </div>
+
+                  {selectedMenu.description && (
+                    <p className="whitespace-pre-line text-zinc-200 text-xs leading-relaxed bg-white/4 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
+                      {selectedMenu.description}
+                    </p>
+                  )}
+
+                  <div>
+                    <h4 className="text-xs font-black text-zinc-400 mb-3.5">
+                      جزئیات و آیتم‌های منو:
+                    </h4>
+                    <div className="space-y-2.5">
+                      {selectedMenu.items.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-3 p-3.5 rounded-2xl bg-white/3 border border-white/10 text-xs text-zinc-200 backdrop-blur-md"
+                        >
+                          <div className="w-6 h-6 rounded-xl bg-[#85004E]/40 text-[#f4a1d5] flex items-center justify-center text-xs font-black border border-[#85004E]/60 shrink-0 shadow-sm mt-0.5">
+                            ✓
+                          </div>
+                          <div className="flex-1">
+                            <span className="font-bold text-white block">
+                              {item.title}
+                            </span>
+                            {item.description && (
+                              <p className="text-[11px] text-zinc-400 font-normal mt-1 leading-relaxed whitespace-pre-line">
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-white/10">
+                    <div className="flex items-baseline justify-between mb-4 px-1">
+                      <span className="text-xs text-zinc-400 font-medium">
+                        قیمت :
+                      </span>
+                      <div className="text-right">
+                        {selectedMenu.pricingTiers.map((item, idx) => (
+                          <div key={item.price || idx}>
+                            <span className="text-[10px] text-zinc-400 font-bold mr-1.5">
+                              {item.guestCapacity}{" "}
+                            </span>
+                            <span className="text-2xl font-black text-white tracking-tight">
+                              {item.price}{" "}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 font-bold mr-1.5">
+                              تومان
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-white/10">
-                <div className="flex items-baseline justify-between mb-4 px-1">
-                  <span className="text-xs text-zinc-400 font-medium">
-                    قیمت :
-                  </span>
-                  <div className="text-right">
-                    {selectedMenu.pricingTiers.map((item, idx) => (
-                      <div key={item.price || idx}>
-                        <span className="text-[10px] text-zinc-400 font-bold mr-1.5">
-                          {item.guestCapacity}{" "}
-                        </span>
-                        <span className="text-2xl font-black text-white tracking-tight">
-                          {item.price}{" "}
-                        </span>
-                        <span className="text-[10px] text-zinc-400 font-bold mr-1.5">
-                          تومان
-                        </span>
-                      </div>
-                    ))}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }

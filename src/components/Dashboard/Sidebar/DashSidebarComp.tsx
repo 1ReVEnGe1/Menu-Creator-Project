@@ -1,6 +1,6 @@
 "use client";
 
-import { useDashboard } from "@/hools/useDashboard";
+import { useDashboard } from "@/hooks/useDashboard";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 

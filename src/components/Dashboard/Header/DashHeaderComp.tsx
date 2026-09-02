@@ -3,7 +3,7 @@
 import { signOut } from "next-auth/react";
 import styles from "./DashHeaderComp.module.css";
 import { MdMenu } from "react-icons/md";
-import { useDashboard } from "@/hools/useDashboard";
+import { useDashboard } from "@/hooks/useDashboard";
 
 interface DashHeaderType {
   fullname: string;

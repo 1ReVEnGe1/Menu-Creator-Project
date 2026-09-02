@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CgClose } from "react-icons/cg";
 import DashSidebarComp from "../Sidebar/DashSidebarComp";
 import { useState } from "react";
-import { useDashboard } from "@/hools/useDashboard";
+import { useDashboard } from "@/hooks/useDashboard";
 
 interface MobileSidebarCompProps {
   role: string;

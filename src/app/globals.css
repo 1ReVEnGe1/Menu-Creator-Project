@@ -18,6 +18,30 @@
   }
 } */
 
+/* عرض و ارتفاع اسکرول‌بار */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* مسیر/بک‌گراند اسکرول‌بار */
+::-webkit-scrollbar-track {
+  background: #0a060d;
+}
+
+/* دستگیره اسکرول‌بار (قسمت متحرک) */
+::-webkit-scrollbar-thumb {
+  background: rgba(133, 0, 78, 0.5); /* رنگ اصلی تم #85004E با شفافیت */
+  border-radius: 9999px;
+  border: 2px solid #0a060d; /* ایجاد فاصله از لبه‌ها */
+  transition: background 0.3s ease;
+}
+
+/* حالت Hover روی دستگیره */
+::-webkit-scrollbar-thumb:hover {
+  background: #b5006b; /* رنگ روشن‌تر تم */
+}
+
 body {
   /* #030204 */
   background: var(--background);
