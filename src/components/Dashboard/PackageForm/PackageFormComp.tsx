@@ -1006,7 +1006,7 @@ export default function PackageFormComp({
                           >
                             {/* Item header */}
                             <div className="flex justify-between items-center">
-                              <span className="text-xs text-slate-500 font-bold font-mono">
+                              <span className="text-xs text-slate-500 font-bold">
                                 آیتم{" "}
                                 {iIdx + 1}
                               </span>
