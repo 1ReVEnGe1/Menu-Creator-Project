@@ -35,7 +35,24 @@ export default function PackageDetailsClientComp({
 
   const activePackageLinkRef = useRef<HTMLAnchorElement | null>(null);
 
+  const categoryBarRef = useRef<HTMLDivElement | null>(null);
+
   const initializedMenuHistory = useRef(false);
+
+  /* ==========================================
+     SCROLL BUTTON FOR DESKTOP
+  ========================================== */
+
+  const scrollCategories = (direction: "left" | "right") => {
+    const container = categoryBarRef.current;
+
+    if (!container) return;
+
+    container.scrollBy({
+      left: direction === "left" ? -300 : 300,
+      behavior: "smooth",
+    });
+  };
 
   /* ==========================================
      MAKE SURE COMPONENT RENDERED
@@ -43,6 +60,16 @@ export default function PackageDetailsClientComp({
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.add("packages-page-scrollbar");
+    document.body.classList.add("packages-page-scrollbar");
+
+    return () => {
+      document.documentElement.classList.remove("packages-page-scrollbar");
+      document.body.classList.remove("packages-page-scrollbar");
+    };
   }, []);
 
   /* ==========================================
@@ -229,27 +256,116 @@ export default function PackageDetailsClientComp({
   return (
     <>
       {/* Liquid Categories Bar */}
+      {/* Liquid Categories Bar */}
       <section className="py-3 sticky top-0 z-30 bg-white/3 border-b border-white/10 backdrop-blur-2xl backdrop-saturate-200 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
-        <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-5 py-0.5">
-          {packages.map((pkg) => {
-            const isActive = activePackage._id === pkg._id;
+        <div className="relative group/category">
+          {/* Right Scroll Button - Desktop Only */}
+          <button
+            type="button"
+            onClick={() => scrollCategories("right")}
+            aria-label="اسکرول به راست"
+            className="
+        hidden md:flex
+        absolute right-2 top-1/2 -translate-y-1/2
+        z-20
+        w-9 h-9
+        items-center justify-center
+        rounded-full
+        bg-[#0a060d]/90
+        border border-white/15
+        text-white
+        backdrop-blur-xl
+        shadow-lg
+        hover:bg-[#85004E]
+        hover:border-[#b5006b]
+        transition-all
+      "
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m9 18 6-6-6-6"
+              />
+            </svg>
+          </button>
 
-            return (
-              <a
-                key={pkg._id}
-                ref={isActive ? activePackageLinkRef : undefined}
-                href={`/packages/${pkg.slug}`}
-                aria-current={isActive ? "page" : undefined}
-                className={`flex-none px-4 py-2.5 rounded-2xl text-xs font-bold transition-all duration-300 relative whitespace-nowrap border ${
-                  isActive
-                    ? "text-white bg-gradient-to-r from-[#85004E]/90 to-[#b5006b]/90 border-white/40 shadow-[0_4px_20px_rgba(133,0,78,0.5)] backdrop-blur-xl scale-[1.02]"
-                    : "text-zinc-400 bg-white/3 border-white/10 hover:bg-white/8 hover:border-white/20 hover:text-zinc-200"
-                }`}
-              >
-                {pkg.title}
-              </a>
-            );
-          })}
+          {/* Categories */}
+          <div
+            ref={categoryBarRef}
+            className="
+        flex gap-2.5
+        overflow-x-auto
+        no-scrollbar
+        scroll-smooth
+        px-5
+        md:px-14
+        py-0.5
+      "
+          >
+            {packages.map((pkg) => {
+              const isActive = activePackage._id === pkg._id;
+
+              return (
+                <a
+                  key={pkg._id}
+                  ref={isActive ? activePackageLinkRef : undefined}
+                  href={`/packages/${pkg.slug}`}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`flex-none px-4 py-2.5 rounded-2xl text-xs font-bold transition-all duration-300 relative whitespace-nowrap border ${
+                    isActive
+                      ? "text-white bg-gradient-to-r from-[#85004E]/90 to-[#b5006b]/90 border-white/40 shadow-[0_4px_20px_rgba(133,0,78,0.5)] backdrop-blur-xl scale-[1.02]"
+                      : "text-zinc-400 bg-white/3 border-white/10 hover:bg-white/8 hover:border-white/20 hover:text-zinc-200"
+                  }`}
+                >
+                  {pkg.title}
+                </a>
+              );
+            })}
+          </div>
+
+          {/* Left Scroll Button - Desktop Only */}
+          <button
+            type="button"
+            onClick={() => scrollCategories("left")}
+            aria-label="اسکرول به چپ"
+            className="
+        hidden md:flex
+        absolute left-2 top-1/2 -translate-y-1/2
+        z-20
+        w-9 h-9
+        items-center justify-center
+        rounded-full
+        bg-[#0a060d]/90
+        border border-white/15
+        text-white
+        backdrop-blur-xl
+        shadow-lg
+        hover:bg-[#85004E]
+        hover:border-[#b5006b]
+        transition-all
+      "
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m15 18-6-6 6-6"
+              />
+            </svg>
+          </button>
         </div>
       </section>
 

@@ -18,28 +18,28 @@
   }
 } */
 
-/* عرض و ارتفاع اسکرول‌بار */
-::-webkit-scrollbar {
+.packages-page-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(133, 0, 78, 0.5) #0a060d;
+}
+
+.packages-page-scrollbar::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
-/* مسیر/بک‌گراند اسکرول‌بار */
-::-webkit-scrollbar-track {
+.packages-page-scrollbar::-webkit-scrollbar-track {
   background: #0a060d;
 }
 
-/* دستگیره اسکرول‌بار (قسمت متحرک) */
-::-webkit-scrollbar-thumb {
-  background: rgba(133, 0, 78, 0.5); /* رنگ اصلی تم #85004E با شفافیت */
+.packages-page-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(133, 0, 78, 0.5);
   border-radius: 9999px;
-  border: 2px solid #0a060d; /* ایجاد فاصله از لبه‌ها */
-  transition: background 0.3s ease;
+  border: 2px solid #0a060d;
 }
 
-/* حالت Hover روی دستگیره */
-::-webkit-scrollbar-thumb:hover {
-  background: #b5006b; /* رنگ روشن‌تر تم */
+.packages-page-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #b5006b;
 }
 
 body {
