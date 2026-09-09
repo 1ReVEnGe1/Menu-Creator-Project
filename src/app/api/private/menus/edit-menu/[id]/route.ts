@@ -1,10 +1,8 @@
 import connectDB from "lib/db";
-
 import { Menu } from "models/Menu";
-
 import { NextResponse } from "next/server";
-
 import { revalidateTag } from "next/cache";
+import mongoose from "mongoose";
 
 export async function PUT(
   req: Request,
@@ -19,24 +17,47 @@ export async function PUT(
   try {
     await connectDB();
 
-    const { id } =
-      await params;
+    const { id } = await params;
 
-    const body =
-      await req.json();
+    // =====================================================
+    // ID VALIDATION
+    // =====================================================
+
+    if (
+      !id ||
+      !mongoose.Types.ObjectId.isValid(
+        id
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "شناسه منو معتبر نیست.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const body = await req.json();
 
     const {
       title,
       pricingTiers,
       items,
       description,
-    } = body;
+    } = body ?? {};
 
-    /* =========================================
-       VALIDATION
-    ========================================= */
+    // =====================================================
+    // TITLE
+    // =====================================================
 
-    if (!title?.trim()) {
+    if (
+      typeof title !== "string" ||
+      !title.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -49,51 +70,61 @@ export async function PUT(
       );
     }
 
-    /* =========================================
-       PRICE TIERS
-    ========================================= */
+    // =====================================================
+    // PRICE TIERS
+    // =====================================================
 
     const formattedTiers =
       Array.isArray(pricingTiers)
         ? pricingTiers
-
             .filter(
               (tier: any) =>
                 tier &&
-                (
-                  typeof tier.guestCapacity ===
-                    "string" ||
+                (typeof tier.guestCapacity ===
+                  "string" ||
                   typeof tier.price ===
-                    "string"
-                )
+                    "string")
             )
+            .map((tier: any) => ({
+              guestCapacity:
+                typeof tier.guestCapacity ===
+                "string"
+                  ? tier.guestCapacity.trim()
+                  : "",
 
-            .map(
-              (tier: any) => ({
-                guestCapacity:
-                  typeof tier.guestCapacity ===
-                  "string"
-                    ? tier.guestCapacity.trim()
-                    : "",
-
-                price:
-                  typeof tier.price ===
-                  "string"
-                    ? tier.price.trim()
-                    : "",
-              })
+              price:
+                typeof tier.price ===
+                "string"
+                  ? tier.price.trim()
+                  : "",
+            }))
+            .filter(
+              (tier: any) =>
+                tier.guestCapacity !== "" ||
+                tier.price !== ""
             )
-
         : [];
 
-    /* =========================================
-       ITEMS
-    ========================================= */
+    if (formattedTiers.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "حداقل یک سطح قیمت برای منو وارد کنید.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    // =====================================================
+    // ITEMS
+    // =====================================================
 
     const formattedItems =
       Array.isArray(items)
         ? items
-
             .filter(
               (item: any) =>
                 item &&
@@ -101,33 +132,26 @@ export async function PUT(
                   "string" &&
                 item.title.trim() !== ""
             )
+            .map((item: any) => ({
+              title: item.title.trim(),
 
-            .map(
-              (item: any) => ({
-                title:
-                  item.title.trim(),
-
-                description:
-                  typeof item.description ===
-                  "string"
-                    ? item.description.trim()
-                    : "",
-              })
-            )
-
+              description:
+                typeof item.description ===
+                "string"
+                  ? item.description.trim()
+                  : "",
+            }))
         : [];
 
-    /* =========================================
-       UPDATE MENU
-    ========================================= */
+    // =====================================================
+    // UPDATE
+    // =====================================================
 
     const updatedMenu =
       await Menu.findByIdAndUpdate(
         id,
-
         {
-          title:
-            title.trim(),
+          title: title.trim(),
 
           pricingTiers:
             formattedTiers,
@@ -141,16 +165,15 @@ export async function PUT(
               ? description.trim()
               : "",
         },
-
         {
-          new: true,
+          /*
+            به جای new: true
+            که Warning Mongoose می‌داد.
+          */
+          returnDocument: "after",
           runValidators: true,
         }
       );
-
-    /* =========================================
-       MENU NOT FOUND
-    ========================================= */
 
     if (!updatedMenu) {
       return NextResponse.json(
@@ -165,18 +188,18 @@ export async function PUT(
       );
     }
 
-    /* =========================================
-       INVALIDATE PUBLIC CACHE
-    ========================================= */
+    // =====================================================
+    // CACHE
+    // =====================================================
 
     revalidateTag(
       "public-packages",
       "max"
     );
 
-    /* =========================================
-       RESPONSE
-    ========================================= */
+    // =====================================================
+    // RESPONSE
+    // =====================================================
 
     return NextResponse.json(
       {
@@ -185,8 +208,7 @@ export async function PUT(
         message:
           "منو با موفقیت بروزرسانی شد.",
 
-        data:
-          updatedMenu,
+        data: updatedMenu,
       },
       {
         status: 200,
@@ -206,7 +228,8 @@ export async function PUT(
           "خطای سرور در ویرایش منو",
 
         error:
-          error.message,
+          error?.message ||
+          "Unknown server error",
       },
       {
         status: 500,

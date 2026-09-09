@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 
 export interface IMenuItem {
   title: string;
@@ -44,7 +44,7 @@ export default function PackageFormComp({
   const [submitting, setSubmitting] = useState(false);
 
   // =========================================================
-  // PACKAGE LEVEL STATES
+  // PACKAGE STATES
   // =========================================================
 
   const [packageTitle, setPackageTitle] = useState(
@@ -56,7 +56,6 @@ export default function PackageFormComp({
   );
 
   const [slugError, setSlugError] = useState<string | null>(null);
-
   const [checkingSlug, setCheckingSlug] = useState(false);
 
   const [packageCategory, setPackageCategory] = useState<
@@ -67,7 +66,9 @@ export default function PackageFormComp({
   // ACCORDION
   // =========================================================
 
-  const [openMenuIndexes, setOpenMenuIndexes] = useState<number[]>([0]);
+  const [openMenuIndexes, setOpenMenuIndexes] = useState<number[]>([
+    0,
+  ]);
 
   // =========================================================
   // MENUS
@@ -150,41 +151,80 @@ export default function PackageFormComp({
     const formatted = val
       .toLowerCase()
       .replace(/[^a-z0-9-]/g, "-")
-      .replace(/-+/g, "-");
+      .replace(/-+/g, "-")
+      .replace(/^-+|-+$/g, "");
 
     setPackageSlug(formatted);
     setSlugError(null);
   };
 
-  const verifySlugUniqueness = async () => {
-    if (!packageSlug.trim()) {
-      setSlugError("وارد کردن اسلاگ انگلیسی الزامی است.");
-      return;
-    }
+  const checkSlugUniqueness =
+    async (): Promise<boolean> => {
+      const cleanSlug = packageSlug.trim();
 
-    setCheckingSlug(true);
-
-    try {
-      const res = await fetch(
-        `/api/private/packages/check-slug?slug=${encodeURIComponent(
-          packageSlug
-        )}&currentId=${initialData?._id || ""}`
-      );
-
-      const data = await res.json();
-
-      if (!data.isUnique) {
+      if (!cleanSlug) {
         setSlugError(
-          "این اسلاگ قبلاً استفاده شده است. لطفاً اسلاگ دیگری وارد کنید."
+          "وارد کردن اسلاگ انگلیسی الزامی است."
         );
-      } else {
-        setSlugError(null);
+        return false;
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setCheckingSlug(false);
-    }
+
+      setCheckingSlug(true);
+
+      try {
+        const res = await fetch(
+          `/api/private/packages/check-slug?slug=${encodeURIComponent(
+            cleanSlug
+          )}&currentId=${encodeURIComponent(
+            initialData?._id || ""
+          )}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          setSlugError(
+            data?.message ||
+              data?.error ||
+              "امکان بررسی اسلاگ وجود ندارد."
+          );
+
+          return false;
+        }
+
+        if (!data?.isUnique) {
+          setSlugError(
+            "این اسلاگ قبلاً استفاده شده است. لطفاً اسلاگ دیگری وارد کنید."
+          );
+
+          return false;
+        }
+
+        setSlugError(null);
+
+        return true;
+      } catch (err) {
+        console.error(
+          "Error checking package slug:",
+          err
+        );
+
+        setSlugError(
+          "ارتباط با سرور برای بررسی اسلاگ برقرار نشد."
+        );
+
+        return false;
+      } finally {
+        setCheckingSlug(false);
+      }
+    };
+
+  const verifySlugUniqueness = async () => {
+    await checkSlugUniqueness();
   };
 
   // =========================================================
@@ -214,8 +254,8 @@ export default function PackageFormComp({
   const addMenuField = () => {
     const newIdx = menus.length;
 
-    setMenus([
-      ...menus,
+    setMenus((prev) => [
+      ...prev,
       {
         title: `منوی شماره ${newIdx + 1}`,
 
@@ -237,13 +277,19 @@ export default function PackageFormComp({
       },
     ]);
 
-    setOpenMenuIndexes((prev) => [...prev, newIdx]);
+    setOpenMenuIndexes((prev) => [
+      ...prev,
+      newIdx,
+    ]);
   };
 
   const removeMenuField = (index: number) => {
-    const confirmDeleteMenu = confirm('مطمئنی که میخوای منو رو پاک کنی؟ ')   
-    if(!confirmDeleteMenu){
-      return 
+    const confirmDeleteMenu = confirm(
+      "مطمئنی که میخوای منو رو از این پکیج حذف کنی؟"
+    );
+
+    if (!confirmDeleteMenu) {
+      return;
     }
 
     setMenus((prev) =>
@@ -275,7 +321,7 @@ export default function PackageFormComp({
   };
 
   // =========================================================
-  // PRICE TIER HELPERS
+  // PRICE TIERS
   // =========================================================
 
   const addPriceTier = (menuIdx: number) => {
@@ -284,8 +330,10 @@ export default function PackageFormComp({
 
       updated[menuIdx] = {
         ...updated[menuIdx],
+
         pricingTiers: [
           ...updated[menuIdx].pricingTiers,
+
           {
             guestCapacity: "",
             price: "",
@@ -306,7 +354,9 @@ export default function PackageFormComp({
     setMenus((prev) => {
       const updated = [...prev];
 
-      const tiers = [...updated[menuIdx].pricingTiers];
+      const tiers = [
+        ...updated[menuIdx].pricingTiers,
+      ];
 
       tiers[tierIdx] = {
         ...tiers[tierIdx],
@@ -333,7 +383,9 @@ export default function PackageFormComp({
         ...updated[menuIdx],
 
         pricingTiers:
-          updated[menuIdx].pricingTiers.filter(
+          updated[
+            menuIdx
+          ].pricingTiers.filter(
             (_, i) => i !== tierIdx
           ),
       };
@@ -343,7 +395,7 @@ export default function PackageFormComp({
   };
 
   // =========================================================
-  // ITEM HELPERS
+  // MENU ITEMS
   // =========================================================
 
   const addMenuItem = (
@@ -390,7 +442,9 @@ export default function PackageFormComp({
     setMenus((prev) => {
       const updated = [...prev];
 
-      const items = [...updated[menuIdx].items];
+      const items = [
+        ...updated[menuIdx].items,
+      ];
 
       items[itemIdx] = {
         ...items[itemIdx],
@@ -445,7 +499,8 @@ export default function PackageFormComp({
       e.preventDefault();
 
       const title =
-        menus[menuIdx].items[itemIdx].title;
+        menus[menuIdx].items[itemIdx]
+          .title;
 
       if (!title.trim()) {
         return;
@@ -506,6 +561,53 @@ export default function PackageFormComp({
   };
 
   // =========================================================
+  // FORM VALIDATION
+  // =========================================================
+
+  const validateBeforeSubmit = () => {
+    if (!packageTitle.trim()) {
+      throw new Error(
+        "عنوان پکیج را وارد کنید."
+      );
+    }
+
+    if (!packageSlug.trim()) {
+      throw new Error(
+        "اسلاگ پکیج را وارد کنید."
+      );
+    }
+
+    if (menus.length === 0) {
+      throw new Error(
+        "پکیج باید حداقل یک منو داشته باشد."
+      );
+    }
+
+    menus.forEach((menu, index) => {
+      if (!menu.title.trim()) {
+        throw new Error(
+          `عنوان منوی شماره ${
+            index + 1
+          } را وارد کنید.`
+        );
+      }
+
+      const validTiers =
+        menu.pricingTiers.filter(
+          (tier) =>
+            tier.guestCapacity.trim() ||
+            tier.price.trim()
+        );
+
+      if (validTiers.length === 0) {
+        throw new Error(
+          `برای «${menu.title}» حداقل یک سطح قیمت وارد کنید.`
+        );
+      }
+    });
+  };
+
+  // =========================================================
   // SUBMIT
   // =========================================================
 
@@ -514,18 +616,76 @@ export default function PackageFormComp({
   ) => {
     e.preventDefault();
 
-    if (slugError) {
-      alert("لطفاً ابتدا خطای اسلاگ را برطرف کنید.");
+    if (submitting) {
+      return;
+    }
+
+    try {
+      validateBeforeSubmit();
+    } catch (error: any) {
+      alert(
+        error?.message ||
+          "اطلاعات فرم کامل نیست."
+      );
+      return;
+    }
+
+    /*
+      اسلاگ را درست قبل از Save دوباره بررسی می‌کنیم.
+      بنابراین فقط به onBlur کاربر وابسته نیستیم.
+    */
+    const isSlugValid =
+      await checkSlugUniqueness();
+
+    if (!isSlugValid) {
       return;
     }
 
     setSubmitting(true);
 
-    try {
-      const processedMenuIds: string[] = [];
+    /*
+      Snapshot محلی می‌سازیم.
+      اگر Menu جدید ساخته شود، ID برگشتی را هم
+      داخل این snapshot و هم React state ذخیره می‌کنیم.
+    */
+    let workingMenus: IMenuForm[] =
+      menus.map((menu) => ({
+        ...menu,
 
-      for (const menu of menus) {
-        const isEditMenu = Boolean(menu._id);
+        pricingTiers:
+          menu.pricingTiers.map(
+            (tier) => ({
+              ...tier,
+            })
+          ),
+
+        items: menu.items.map(
+          (item) => ({
+            ...item,
+          })
+        ),
+      }));
+
+    try {
+      const processedMenuIds: string[] =
+        [];
+
+      // =====================================================
+      // SAVE MENUS
+      // =====================================================
+
+      for (
+        let menuIndex = 0;
+        menuIndex <
+        workingMenus.length;
+        menuIndex++
+      ) {
+        const menu =
+          workingMenus[menuIndex];
+
+        const isEditMenu = Boolean(
+          menu._id
+        );
 
         const menuUrl = isEditMenu
           ? `/api/private/menus/edit-menu/${menu._id}`
@@ -535,40 +695,135 @@ export default function PackageFormComp({
           ? "PUT"
           : "POST";
 
-        const cleanItems = menu.items.filter(
-          (i) => i.title.trim() !== ""
-        );
+        const cleanItems =
+          menu.items
+            .filter(
+              (item) =>
+                item.title.trim() !== ""
+            )
+            .map((item) => ({
+              title: item.title.trim(),
+              description:
+                item.description?.trim() ||
+                "",
+            }));
 
         const cleanTiers =
-          menu.pricingTiers.filter(
-            (t) =>
-              t.guestCapacity.trim() !== "" ||
-              t.price.trim() !== ""
-          );
+          menu.pricingTiers
+            .filter(
+              (tier) =>
+                tier.guestCapacity.trim() !==
+                  "" ||
+                tier.price.trim() !== ""
+            )
+            .map((tier) => ({
+              guestCapacity:
+                tier.guestCapacity.trim(),
+              price: tier.price.trim(),
+            }));
 
-        const resMenu = await fetch(menuUrl, {
-          method: menuMethod,
+        const resMenu = await fetch(
+          menuUrl,
+          {
+            method: menuMethod,
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-          body: JSON.stringify({
-            title: menu.title,
-            pricingTiers: cleanTiers,
-            items: cleanItems,
-            description: menu.description,
-          }),
-        });
+            body: JSON.stringify({
+              title: menu.title.trim(),
 
-        const menuData = await resMenu.json();
+              pricingTiers:
+                cleanTiers,
 
-        if (menuData.success) {
-          processedMenuIds.push(
-            menuData.data._id || menu._id
+              items: cleanItems,
+
+              description:
+                menu.description.trim(),
+            }),
+          }
+        );
+
+        const menuData =
+          await resMenu
+            .json()
+            .catch(() => null);
+
+        /*
+          حیاتی:
+          اگر حتی یک Menu ذخیره نشد،
+          Package به هیچ عنوان Update نمی‌شود.
+        */
+        if (
+          !resMenu.ok ||
+          !menuData?.success
+        ) {
+          throw new Error(
+            menuData?.message ||
+              menuData?.error ||
+              `ذخیره «${menu.title}» ناموفق بود.`
           );
         }
+
+        const savedMenuId =
+          menuData?.data?._id ||
+          menu._id;
+
+        if (!savedMenuId) {
+          throw new Error(
+            `شناسه «${menu.title}» از سرور دریافت نشد.`
+          );
+        }
+
+        processedMenuIds.push(
+          String(savedMenuId)
+        );
+
+        /*
+          اگر Menu جدید بوده، ID برگشتی را
+          داخل state نگه می‌داریم.
+
+          اگر بعداً Package API fail شود،
+          Submit بعدی دوباره این Menu را POST نمی‌کند.
+        */
+        if (!menu._id) {
+          workingMenus =
+            workingMenus.map(
+              (currentMenu, index) =>
+                index === menuIndex
+                  ? {
+                      ...currentMenu,
+                      _id: String(
+                        savedMenuId
+                      ),
+                    }
+                  : currentMenu
+            );
+
+          setMenus(workingMenus);
+        }
       }
+
+      /*
+        Safety check سمت Client.
+        اگر به هر دلیلی تعداد IDهای پردازش‌شده
+        با تعداد Menuها یکی نباشد،
+        Package را ذخیره نمی‌کنیم.
+      */
+      if (
+        processedMenuIds.length !==
+        workingMenus.length
+      ) {
+        throw new Error(
+          "تعداد منوهای ذخیره‌شده با منوهای فرم مطابقت ندارد. ذخیره پکیج متوقف شد."
+        );
+      }
+
+      // =====================================================
+      // SAVE PACKAGE
+      // =====================================================
 
       const pkgUrl =
         mode === "create"
@@ -580,37 +835,72 @@ export default function PackageFormComp({
           ? "POST"
           : "PUT";
 
-      const resPkg = await fetch(pkgUrl, {
-        method: pkgMethod,
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          title: packageTitle,
-          slug: packageSlug,
-          category: packageCategory,
-          menus: processedMenuIds,
-        }),
-      });
-
-      if (resPkg.ok) {
-        onSuccess();
-        onClose();
-      } else {
-        const errorData = await resPkg.json();
-
-        alert(
-          errorData.message ||
-            "خطا در ثبت پکیج"
+      if (
+        mode === "edit" &&
+        !initialData?._id
+      ) {
+        throw new Error(
+          "شناسه پکیج برای ویرایش موجود نیست."
         );
       }
-    } catch (err) {
-      console.error(err);
+
+      const resPkg = await fetch(
+        pkgUrl,
+        {
+          method: pkgMethod,
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            title:
+              packageTitle.trim(),
+
+            slug:
+              packageSlug.trim(),
+
+            category:
+              packageCategory,
+
+            menus:
+              processedMenuIds,
+          }),
+        }
+      );
+
+      const packageData =
+        await resPkg
+          .json()
+          .catch(() => null);
+
+      if (
+        !resPkg.ok ||
+        !packageData?.success
+      ) {
+        throw new Error(
+          packageData?.message ||
+            packageData?.error ||
+            "خطا در ذخیره پکیج"
+        );
+      }
+
+      /*
+        فقط وقتی همه Menuها + خود Package
+        با موفقیت ذخیره شدند فرم بسته می‌شود.
+      */
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error(
+        "Package submit failed:",
+        err
+      );
 
       alert(
-        "خطایی در ارتباط با سرور رخ داد."
+        err?.message ||
+          "خطایی در ذخیره اطلاعات رخ داد. اطلاعات فرم حذف نشده است؛ دوباره تلاش کنید."
       );
     } finally {
       setSubmitting(false);
@@ -627,503 +917,609 @@ export default function PackageFormComp({
       className="space-y-6 sm:space-y-8 text-right"
       dir="rtl"
     >
-      {/* =====================================================
-          PACKAGE INFORMATION
-      ====================================================== */}
+      {/*
+        در زمان Save کل ورودی‌های فرم را Disable می‌کنیم
+        تا وسط عملیات، state تغییر نکند.
+      */}
+      <fieldset
+        disabled={submitting}
+        className="space-y-6 sm:space-y-8 border-0 p-0 m-0 min-w-0 disabled:opacity-80"
+      >
+        {/* =====================================================
+            PACKAGE INFORMATION
+        ====================================================== */}
 
-      <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 space-y-4">
-        <h3 className="text-slate-700 text-sm font-bold">
-          ۱. مشخصات پکیج اصلی
-        </h3>
+        <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-100 space-y-4">
+          <h3 className="text-slate-700 text-sm font-bold">
+            ۱. مشخصات پکیج اصلی
+          </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Package title */}
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">
-              عنوان پکیج (فارسی)
-            </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Package title */}
+            <div>
+              <label className="block text-xs text-slate-600 mb-1">
+                عنوان پکیج (فارسی)
+              </label>
 
-            <input
-              type="text"
-              required
-              placeholder="مثلا: پکیج‌های تولد بزرگسال"
-              value={packageTitle}
-              onChange={(e) =>
-                setPackageTitle(e.target.value)
-              }
-              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#85004E]"
-            />
-          </div>
+              <input
+                type="text"
+                required
+                placeholder="مثلا: پکیج‌های تولد بزرگسال"
+                value={packageTitle}
+                onChange={(e) =>
+                  setPackageTitle(
+                    e.target.value
+                  )
+                }
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#85004E]"
+              />
+            </div>
 
-          {/* Slug */}
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">
-              نام یکتا در آدرس / Slug (انگلیسی)
-            </label>
+            {/* Slug */}
+            <div>
+              <label className="block text-xs text-slate-600 mb-1">
+                نام یکتا در آدرس / Slug
+                (انگلیسی)
+              </label>
 
-            <input
-              type="text"
-              required
-              dir="ltr"
-              placeholder="e.g. birthday-vip-package"
-              value={packageSlug}
-              onChange={(e) =>
-                handleSlugChange(e.target.value)
-              }
-              onBlur={verifySlugUniqueness}
-              className={`w-full border rounded-xl p-3 text-sm font-mono focus:outline-none focus:ring-2 ${
-                slugError
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-slate-200 focus:ring-[#85004E]"
-              }`}
-            />
+              <input
+                type="text"
+                required
+                dir="ltr"
+                placeholder="e.g. birthday-vip-package"
+                value={packageSlug}
+                onChange={(e) =>
+                  handleSlugChange(
+                    e.target.value
+                  )
+                }
+                onBlur={
+                  verifySlugUniqueness
+                }
+                className={`w-full border rounded-xl p-3 text-sm font-mono focus:outline-none focus:ring-2 ${
+                  slugError
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-slate-200 focus:ring-[#85004E]"
+                }`}
+              />
 
-            {checkingSlug && (
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                در حال بررسی...
-              </span>
-            )}
+              {checkingSlug && (
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  در حال بررسی...
+                </span>
+              )}
 
-            {slugError && (
-              <span className="text-[11px] text-red-500 mt-1 block font-medium">
-                {slugError}
-              </span>
-            )}
-          </div>
+              {slugError && (
+                <span className="text-[11px] text-red-500 mt-1 block font-medium">
+                  {slugError}
+                </span>
+              )}
+            </div>
 
-          {/* Category */}
-          <div>
-            <label className="block text-xs text-slate-600 mb-1">
-              نوع پکیج
-            </label>
+            {/* Category */}
+            <div>
+              <label className="block text-xs text-slate-600 mb-1">
+                نوع پکیج
+              </label>
 
-            <select
-              value={packageCategory}
-              onChange={(e) =>
-                setPackageCategory(
-                  e.target.value as
-                    | "general-menu"
-                    | "sub-services-menu"
-                )
-              }
-              className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#85004E]"
-            >
-              <option value="general-menu">
-                پکیج کلی (تولد، عروسی و ...)
-              </option>
-
-              <option value="sub-services-menu">
-                منوی تک‌خدماتی (بارتندر، مزه و ...)
-              </option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* =====================================================
-          MENUS
-      ====================================================== */}
-
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <h3 className="text-slate-700 text-sm font-bold">
-              ۲. منوهای زیرمجموعه این پکیج
-            </h3>
-
-            <div className="flex gap-2 text-xs">
-              <button
-                type="button"
-                onClick={expandAll}
-                className="text-slate-500 hover:text-slate-800 underline"
+              <select
+                value={packageCategory}
+                onChange={(e) =>
+                  setPackageCategory(
+                    e.target.value as
+                      | "general-menu"
+                      | "sub-services-menu"
+                  )
+                }
+                className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#85004E]"
               >
-                باز کردن همه
-              </button>
+                <option value="general-menu">
+                  پکیج کلی (تولد، عروسی و
+                  ...)
+                </option>
 
-              <span className="text-slate-300">
-                |
-              </span>
-
-              <button
-                type="button"
-                onClick={collapseAll}
-                className="text-slate-500 hover:text-slate-800 underline"
-              >
-                بستن همه
-              </button>
+                <option value="sub-services-menu">
+                  منوی تک‌خدماتی (بارتندر،
+                  مزه و ...)
+                </option>
+              </select>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={addMenuField}
-            className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs text-white shadow-sm font-bold shrink-0"
-            style={{
-              backgroundColor: "#85004E",
-            }}
-          >
-            + افزودن منوی جدید
-          </button>
         </div>
 
         {/* =====================================================
-            MENU ACCORDIONS
+            MENUS
         ====================================================== */}
 
-        {menus.map((menu, mIdx) => {
-          const isOpen =
-            openMenuIndexes.includes(mIdx);
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h3 className="text-slate-700 text-sm font-bold">
+                ۲. منوهای زیرمجموعه این
+                پکیج
+              </h3>
 
-          return (
-            <div
-              key={mIdx}
-              className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm transition-all"
-            >
-              {/* Header */}
-              <div
-                onClick={() =>
-                  toggleAccordion(mIdx)
-                }
-                className="flex justify-between items-center p-3.5 sm:p-4 bg-slate-50/80 hover:bg-slate-100/80 cursor-pointer select-none transition-colors border-b border-slate-100 gap-2"
-              >
-                <div className="flex items-center gap-2 sm:gap-3 truncate">
-                  <span
-                    className={`text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold shrink-0 ${
-                      isOpen
-                        ? "bg-[#85004E] text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    {mIdx + 1}
-                  </span>
-
-                  <span className="text-xs sm:text-sm font-bold text-slate-800 truncate">
-                    {menu.title ||
-                      `منوی شماره ${mIdx + 1}`}
-                  </span>
-
-                  <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">
-                    (
-                    {
-                      menu.items.filter(
-                        (i) =>
-                          i.title.trim()
-                      ).length
-                    }{" "}
-                    آیتم)
-                  </span>
-                </div>
-
-                <div
-                  className="flex items-center gap-2 sm:gap-4 shrink-0"
-                  onClick={(e) =>
-                    e.stopPropagation()
-                  }
+              <div className="flex gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={expandAll}
+                  className="text-slate-500 hover:text-slate-800 underline"
                 >
-                  {menus.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeMenuField(mIdx)
-                      }
-                      className="text-red-500 text-xs hover:underline"
-                    >
-                      حذف منو
-                    </button>
-                  )}
+                  باز کردن همه
+                </button>
 
-                  <span
-                    onClick={() =>
-                      toggleAccordion(mIdx)
-                    }
-                    className="text-slate-400 hover:text-slate-600 text-xs sm:text-sm font-bold px-1"
-                  >
-                    {isOpen ? "▲" : "▼"}
-                  </span>
-                </div>
+                <span className="text-slate-300">
+                  |
+                </span>
+
+                <button
+                  type="button"
+                  onClick={collapseAll}
+                  className="text-slate-500 hover:text-slate-800 underline"
+                >
+                  بستن همه
+                </button>
               </div>
+            </div>
 
-              {/* =====================================================
-                  MENU BODY
-              ====================================================== */}
+            <button
+              type="button"
+              onClick={addMenuField}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs text-white shadow-sm font-bold shrink-0"
+              style={{
+                backgroundColor:
+                  "#85004E",
+              }}
+            >
+              + افزودن منوی جدید
+            </button>
+          </div>
 
-              {isOpen && (
-                <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-white">
-                  {/* Menu title */}
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">
-                      عنوان منو
-                    </label>
+          {/* =====================================================
+              MENU ACCORDIONS
+          ====================================================== */}
 
-                    <input
-                      type="text"
-                      required
-                      placeholder="مثلا: منوی شماره ۱ (اقتصادی)"
-                      value={menu.title}
-                      onChange={(e) =>
-                        updateMenuField(
-                          mIdx,
-                          "title",
-                          e.target.value
-                        )
-                      }
-                      className="w-full border border-slate-200 rounded-xl p-2.5 text-sm"
-                    />
-                  </div>
+          {menus.map(
+            (menu, mIdx) => {
+              const isOpen =
+                openMenuIndexes.includes(
+                  mIdx
+                );
 
-                  {/* =====================================================
-                      PRICING TIERS
-                  ====================================================== */}
+              return (
+                <div
+                  key={
+                    menu._id ||
+                    `new-menu-${mIdx}`
+                  }
+                  className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-sm transition-all"
+                >
+                  {/* Header */}
 
-                  <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200/60 space-y-3">
-                    <div className="flex justify-between items-center">
-                      <label className="block text-xs text-slate-700 font-bold">
-                        سطوح قیمت و ظرفیت مهمان
-                      </label>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          addPriceTier(mIdx)
-                        }
-                        className="text-xs text-[#85004E] font-bold hover:underline"
-                      >
-                        + افزودن پله قیمت
-                      </button>
-                    </div>
-
-                    {menu.pricingTiers.map(
-                      (tier, tIdx) => (
-                        <div
-                          key={tIdx}
-                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 bg-white p-2.5 rounded-lg border border-slate-200 relative"
-                        >
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              placeholder="ظرفیت (مثلا: از ۶۰ نفر تا ۱۲۰ نفر)"
-                              value={
-                                tier.guestCapacity
-                              }
-                              onChange={(e) =>
-                                updatePriceTier(
-                                  mIdx,
-                                  tIdx,
-                                  "guestCapacity",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
-                            />
-                          </div>
-
-                          <div className="flex-1 flex items-center gap-2">
-                            <input
-                              type="text"
-                              required
-                              placeholder="قیمت (مثلا: ۷۵,۰۰۰,۰۰۰ تومان)"
-                              value={tier.price}
-                              onChange={(e) =>
-                                updatePriceTier(
-                                  mIdx,
-                                  tIdx,
-                                  "price",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
-                            />
-
-                            {menu.pricingTiers.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  removePriceTier(
-                                    mIdx,
-                                    tIdx
-                                  )
-                                }
-                                className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-100 sm:border-0 hover:bg-red-50 sm:hover:bg-transparent"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        </div>
+                  <div
+                    onClick={() =>
+                      toggleAccordion(
+                        mIdx
                       )
-                    )}
-                  </div>
+                    }
+                    className="flex justify-between items-center p-3.5 sm:p-4 bg-slate-50/80 hover:bg-slate-100/80 cursor-pointer select-none transition-colors border-b border-slate-100 gap-2"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3 truncate">
+                      <span
+                        className={`text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold shrink-0 ${
+                          isOpen
+                            ? "bg-[#85004E] text-white"
+                            : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {mIdx + 1}
+                      </span>
 
-                  {/* Menu description */}
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">
-                      توضیحات منو
-                    </label>
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 truncate">
+                        {menu.title ||
+                          `منوی شماره ${
+                            mIdx + 1
+                          }`}
+                      </span>
 
-                    <textarea
-                      placeholder="توضیحات اضافی مربوط به این منو"
-                      value={menu.description}
-                      onChange={(e) =>
-                        updateMenuField(
-                          mIdx,
-                          "description",
-                          e.target.value
-                        )
-                      }
-                      className="w-full border border-slate-200 rounded-xl p-2.5 text-sm"
-                    />
-                  </div>
-
-                  {/* =====================================================
-                      ITEMS
-                  ====================================================== */}
-
-                  <div className="pt-2">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
-                      <label className="block text-xs text-slate-600 font-bold">
-                        آیتم‌های منو (عنوان و توضیح)
-                      </label>
-
-                      <span className="text-[10px] sm:text-[11px] text-slate-400">
-                        <kbd className="px-1 py-0.5 text-[9px] sm:text-[10px] bg-slate-100 border rounded">
-                          Enter
-                        </kbd>{" "}
-                        خط جدید
-                        {"  |  "}
-                        <kbd className="px-1 py-0.5 text-[9px] sm:text-[10px] bg-slate-100 border rounded">
-                          Shift + Enter
-                        </kbd>{" "}
-                        آیتم بعدی
+                      <span className="text-[11px] sm:text-xs text-slate-400 shrink-0">
+                        (
+                        {
+                          menu.items.filter(
+                            (i) =>
+                              i.title.trim()
+                          ).length
+                        }{" "}
+                        آیتم)
                       </span>
                     </div>
 
-                    <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[500px] overflow-y-auto pl-1 pr-1">
-                      {menu.items.map(
-                        (item, iIdx) => (
-                          <div
-                            key={iIdx}
-                            className="bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200 space-y-2 relative"
-                          >
-                            {/* Item header */}
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-slate-500 font-bold">
-                                آیتم{" "}
-                                {iIdx + 1}
-                              </span>
+                    <div
+                      className="flex items-center gap-2 sm:gap-4 shrink-0"
+                      onClick={(e) =>
+                        e.stopPropagation()
+                      }
+                    >
+                      {menus.length >
+                        1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeMenuField(
+                              mIdx
+                            )
+                          }
+                          className="text-red-500 text-xs hover:underline"
+                        >
+                          حذف منو
+                        </button>
+                      )}
 
-                              {menu.items.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    removeMenuItem(
+                      <span
+                        onClick={() =>
+                          toggleAccordion(
+                            mIdx
+                          )
+                        }
+                        className="text-slate-400 hover:text-slate-600 text-xs sm:text-sm font-bold px-1"
+                      >
+                        {isOpen
+                          ? "▲"
+                          : "▼"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* =====================================================
+                      MENU BODY
+                  ====================================================== */}
+
+                  {isOpen && (
+                    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 bg-white">
+                      {/* Menu title */}
+
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1">
+                          عنوان منو
+                        </label>
+
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثلا: منوی شماره ۱ (اقتصادی)"
+                          value={
+                            menu.title
+                          }
+                          onChange={(e) =>
+                            updateMenuField(
+                              mIdx,
+                              "title",
+                              e.target.value
+                            )
+                          }
+                          className="w-full border border-slate-200 rounded-xl p-2.5 text-sm"
+                        />
+                      </div>
+
+                      {/* =====================================================
+                          PRICING TIERS
+                      ====================================================== */}
+
+                      <div className="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200/60 space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label className="block text-xs text-slate-700 font-bold">
+                            سطوح قیمت و
+                            ظرفیت مهمان
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              addPriceTier(
+                                mIdx
+                              )
+                            }
+                            className="text-xs text-[#85004E] font-bold hover:underline"
+                          >
+                            + افزودن پله
+                            قیمت
+                          </button>
+                        </div>
+
+                        {menu.pricingTiers.map(
+                          (
+                            tier,
+                            tIdx
+                          ) => (
+                            <div
+                              key={
+                                tIdx
+                              }
+                              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 bg-white p-2.5 rounded-lg border border-slate-200 relative"
+                            >
+                              <div className="flex-1">
+                                <input
+                                  type="text"
+                                  placeholder="ظرفیت (مثلا: از ۶۰ نفر تا ۱۲۰ نفر)"
+                                  value={
+                                    tier.guestCapacity
+                                  }
+                                  onChange={(
+                                    e
+                                  ) =>
+                                    updatePriceTier(
                                       mIdx,
-                                      iIdx
+                                      tIdx,
+                                      "guestCapacity",
+                                      e
+                                        .target
+                                        .value
                                     )
                                   }
-                                  className="px-2 py-1 text-red-500 hover:text-red-700 text-xs border border-slate-200 rounded-lg hover:bg-red-50 bg-white transition-colors"
-                                >
-                                  ✕ حذف آیتم
-                                </button>
-                              )}
-                            </div>
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
+                                />
+                              </div>
 
-                            {/* Title */}
-                            <div>
-                              <input
-                                ref={(el) => {
-                                  itemInputRefs.current[
-                                    `${mIdx}-${iIdx}-title`
-                                  ] = el;
-                                }}
-                                type="text"
-                                placeholder="عنوان (مثلاً: کریسپی چیکن)"
-                                value={
-                                  item.title
-                                }
-                                onKeyDown={(e) =>
-                                  handleKeyDownItem(
-                                    e,
-                                    mIdx,
-                                    iIdx,
-                                    "title"
-                                  )
-                                }
-                                onChange={(e) =>
-                                  updateMenuItem(
-                                    mIdx,
-                                    iIdx,
-                                    "title",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none"
-                              />
-                            </div>
+                              <div className="flex-1 flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="قیمت (مثلا: ۷۵,۰۰۰,۰۰۰ تومان)"
+                                  value={
+                                    tier.price
+                                  }
+                                  onChange={(
+                                    e
+                                  ) =>
+                                    updatePriceTier(
+                                      mIdx,
+                                      tIdx,
+                                      "price",
+                                      e
+                                        .target
+                                        .value
+                                    )
+                                  }
+                                  className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#85004E]"
+                                />
 
-                            {/* Description */}
-                            <div>
-                              <textarea
-                                ref={(el) => {
-                                  itemInputRefs.current[
-                                    `${mIdx}-${iIdx}-description`
-                                  ] = el;
-                                }}
-                                rows={2}
-                                placeholder="توضیحات اختیاری (مثلاً: همراه با سس مخصوص)"
-                                value={
-                                  item.description ||
-                                  ""
-                                }
-                                onKeyDown={(e) =>
-                                  handleKeyDownItem(
-                                    e,
-                                    mIdx,
-                                    iIdx,
-                                    "description"
-                                  )
-                                }
-                                onChange={(e) =>
-                                  updateMenuItem(
-                                    mIdx,
-                                    iIdx,
-                                    "description",
-                                    e.target.value
-                                  )
-                                }
-                                className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none resize-y"
-                              />
+                                {menu
+                                  .pricingTiers
+                                  .length >
+                                  1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removePriceTier(
+                                        mIdx,
+                                        tIdx
+                                      )
+                                    }
+                                    className="text-red-500 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-100 sm:border-0 hover:bg-red-50 sm:hover:bg-transparent"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )
-                      )}
+                          )
+                        )}
+                      </div>
+
+                      {/* Menu description */}
+
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1">
+                          توضیحات منو
+                        </label>
+
+                        <textarea
+                          placeholder="توضیحات اضافی مربوط به این منو"
+                          value={
+                            menu.description
+                          }
+                          onChange={(e) =>
+                            updateMenuField(
+                              mIdx,
+                              "description",
+                              e.target.value
+                            )
+                          }
+                          className="w-full border border-slate-200 rounded-xl p-2.5 text-sm"
+                        />
+                      </div>
+
+                      {/* =====================================================
+                          ITEMS
+                      ====================================================== */}
+
+                      <div className="pt-2">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 mb-2">
+                          <label className="block text-xs text-slate-600 font-bold">
+                            آیتم‌های منو
+                            (عنوان و توضیح)
+                          </label>
+
+                          <span className="text-[10px] sm:text-[11px] text-slate-400">
+                            <kbd className="px-1 py-0.5 text-[9px] sm:text-[10px] bg-slate-100 border rounded">
+                              Enter
+                            </kbd>{" "}
+                            خط جدید
+                            {"  |  "}
+                            <kbd className="px-1 py-0.5 text-[9px] sm:text-[10px] bg-slate-100 border rounded">
+                              Shift +
+                              Enter
+                            </kbd>{" "}
+                            آیتم بعدی
+                          </span>
+                        </div>
+
+                        <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[500px] overflow-y-auto pl-1 pr-1">
+                          {menu.items.map(
+                            (
+                              item,
+                              iIdx
+                            ) => (
+                              <div
+                                key={
+                                  iIdx
+                                }
+                                className="bg-slate-50 p-3 sm:p-3.5 rounded-xl border border-slate-200 space-y-2 relative"
+                              >
+                                {/* Item header */}
+
+                                <div className="flex justify-between items-center">
+                                  <span className="text-xs text-slate-500 font-bold">
+                                    آیتم{" "}
+                                    {iIdx +
+                                      1}
+                                  </span>
+
+                                  {menu
+                                    .items
+                                    .length >
+                                    1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        removeMenuItem(
+                                          mIdx,
+                                          iIdx
+                                        )
+                                      }
+                                      className="px-2 py-1 text-red-500 hover:text-red-700 text-xs border border-slate-200 rounded-lg hover:bg-red-50 bg-white transition-colors"
+                                    >
+                                      ✕ حذف
+                                      آیتم
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Title */}
+
+                                <div>
+                                  <input
+                                    ref={(
+                                      el
+                                    ) => {
+                                      itemInputRefs.current[
+                                        `${mIdx}-${iIdx}-title`
+                                      ] =
+                                        el;
+                                    }}
+                                    type="text"
+                                    placeholder="عنوان (مثلاً: کریسپی چیکن)"
+                                    value={
+                                      item.title
+                                    }
+                                    onKeyDown={(
+                                      e
+                                    ) =>
+                                      handleKeyDownItem(
+                                        e,
+                                        mIdx,
+                                        iIdx,
+                                        "title"
+                                      )
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      updateMenuItem(
+                                        mIdx,
+                                        iIdx,
+                                        "title",
+                                        e
+                                          .target
+                                          .value
+                                      )
+                                    }
+                                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none"
+                                  />
+                                </div>
+
+                                {/* Description */}
+
+                                <div>
+                                  <textarea
+                                    ref={(
+                                      el
+                                    ) => {
+                                      itemInputRefs.current[
+                                        `${mIdx}-${iIdx}-description`
+                                      ] =
+                                        el;
+                                    }}
+                                    rows={
+                                      2
+                                    }
+                                    placeholder="توضیحات اختیاری (مثلاً: همراه با سس مخصوص)"
+                                    value={
+                                      item.description ||
+                                      ""
+                                    }
+                                    onKeyDown={(
+                                      e
+                                    ) =>
+                                      handleKeyDownItem(
+                                        e,
+                                        mIdx,
+                                        iIdx,
+                                        "description"
+                                      )
+                                    }
+                                    onChange={(
+                                      e
+                                    ) =>
+                                      updateMenuItem(
+                                        mIdx,
+                                        iIdx,
+                                        "description",
+                                        e
+                                          .target
+                                          .value
+                                      )
+                                    }
+                                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm bg-white focus:border-[#85004E] focus:outline-none resize-y"
+                                  />
+                                </div>
+                              </div>
+                            )
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            addMenuItem(
+                              mIdx
+                            )
+                          }
+                          className="mt-3 text-xs text-[#85004E] font-bold hover:underline flex items-center gap-1"
+                        >
+                          + افزودن آیتم
+                          جدید
+                        </button>
+                      </div>
                     </div>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        addMenuItem(mIdx)
-                      }
-                      className="mt-3 text-xs text-[#85004E] font-bold hover:underline flex items-center gap-1"
-                    >
-                      + افزودن آیتم جدید
-                    </button>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            }
+          )}
+        </div>
+      </fieldset>
 
       {/* =====================================================
-          FOOTER BUTTONS
+          FOOTER
       ====================================================== */}
 
       <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
+          disabled={submitting}
           onClick={onClose}
-          className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+          className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
           انصراف
         </button>
@@ -1131,7 +1527,9 @@ export default function PackageFormComp({
         <button
           type="submit"
           disabled={
-            submitting || Boolean(slugError)
+            submitting ||
+            checkingSlug ||
+            Boolean(slugError)
           }
           className="w-full sm:w-auto px-8 py-2.5 sm:py-3 rounded-xl text-xs text-white shadow-lg disabled:opacity-50 font-bold"
           style={{
@@ -1140,6 +1538,8 @@ export default function PackageFormComp({
         >
           {submitting
             ? "در حال ذخیره..."
+            : checkingSlug
+            ? "در حال بررسی..."
             : mode === "create"
             ? "ثبت و انتشار کامل پکیج"
             : "ذخیره تغییرات پکیج"}

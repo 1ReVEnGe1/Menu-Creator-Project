@@ -1,9 +1,6 @@
 import connectDB from "lib/db";
-
 import { Menu } from "models/Menu";
-
 import { NextResponse } from "next/server";
-
 import { revalidateTag } from "next/cache";
 
 export async function POST(
@@ -12,21 +9,23 @@ export async function POST(
   try {
     await connectDB();
 
-    const body =
-      await req.json();
+    const body = await req.json();
 
     const {
       title,
       pricingTiers,
       items,
       description,
-    } = body;
+    } = body ?? {};
 
-    /* =========================================
-       TITLE VALIDATION
-    ========================================= */
+    // =====================================================
+    // TITLE
+    // =====================================================
 
-    if (!title?.trim()) {
+    if (
+      typeof title !== "string" ||
+      !title.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -39,51 +38,61 @@ export async function POST(
       );
     }
 
-    /* =========================================
-       PRICE TIERS
-    ========================================= */
+    // =====================================================
+    // PRICE TIERS
+    // =====================================================
 
     const formattedTiers =
       Array.isArray(pricingTiers)
         ? pricingTiers
-
             .filter(
               (tier: any) =>
                 tier &&
-                (
-                  typeof tier.guestCapacity ===
-                    "string" ||
+                (typeof tier.guestCapacity ===
+                  "string" ||
                   typeof tier.price ===
-                    "string"
-                )
+                    "string")
             )
+            .map((tier: any) => ({
+              guestCapacity:
+                typeof tier.guestCapacity ===
+                "string"
+                  ? tier.guestCapacity.trim()
+                  : "",
 
-            .map(
-              (tier: any) => ({
-                guestCapacity:
-                  typeof tier.guestCapacity ===
-                  "string"
-                    ? tier.guestCapacity.trim()
-                    : "",
-
-                price:
-                  typeof tier.price ===
-                  "string"
-                    ? tier.price.trim()
-                    : "",
-              })
+              price:
+                typeof tier.price ===
+                "string"
+                  ? tier.price.trim()
+                  : "",
+            }))
+            .filter(
+              (tier: any) =>
+                tier.guestCapacity !== "" ||
+                tier.price !== ""
             )
-
         : [];
 
-    /* =========================================
-       MENU ITEMS
-    ========================================= */
+    if (formattedTiers.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "حداقل یک سطح قیمت برای منو وارد کنید.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    // =====================================================
+    // ITEMS
+    // =====================================================
 
     const formattedItems =
       Array.isArray(items)
         ? items
-
             .filter(
               (item: any) =>
                 item &&
@@ -91,56 +100,47 @@ export async function POST(
                   "string" &&
                 item.title.trim() !== ""
             )
+            .map((item: any) => ({
+              title: item.title.trim(),
 
-            .map(
-              (item: any) => ({
-                title:
-                  item.title.trim(),
-
-                description:
-                  typeof item.description ===
-                  "string"
-                    ? item.description.trim()
-                    : "",
-              })
-            )
-
+              description:
+                typeof item.description ===
+                "string"
+                  ? item.description.trim()
+                  : "",
+            }))
         : [];
 
-    /* =========================================
-       CREATE MENU
-    ========================================= */
+    // =====================================================
+    // CREATE
+    // =====================================================
 
-    const newMenu =
-      await Menu.create({
-        title:
-          title.trim(),
+    const newMenu = await Menu.create({
+      title: title.trim(),
 
-        pricingTiers:
-          formattedTiers,
+      pricingTiers:
+        formattedTiers,
 
-        items:
-          formattedItems,
+      items: formattedItems,
 
-        description:
-          typeof description ===
-          "string"
-            ? description.trim()
-            : "",
-      });
+      description:
+        typeof description === "string"
+          ? description.trim()
+          : "",
+    });
 
-    /* =========================================
-       INVALIDATE CACHE
-    ========================================= */
+    // =====================================================
+    // CACHE
+    // =====================================================
 
     revalidateTag(
       "public-packages",
       "max"
     );
 
-    /* =========================================
-       RESPONSE
-    ========================================= */
+    // =====================================================
+    // RESPONSE
+    // =====================================================
 
     return NextResponse.json(
       {
@@ -160,13 +160,12 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-
         error:
-          error.message ||
+          error?.message ||
           "خطا در ثبت منو",
       },
       {
-        status: 400,
+        status: 500,
       }
     );
   }

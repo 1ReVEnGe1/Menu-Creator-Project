@@ -1,12 +1,13 @@
 import connectDB from "lib/db";
-
 import { Package } from "models/Package";
-
+import { Menu } from "models/Menu";
 import { NextResponse } from "next/server";
-
 import { revalidateTag } from "next/cache";
+import mongoose from "mongoose";
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request
+) {
   try {
     await connectDB();
 
@@ -17,17 +18,21 @@ export async function POST(req: Request) {
       category,
       slug,
       menus,
-    } = body;
+    } = body ?? {};
 
-    /* =========================================
-       VALIDATION
-    ========================================= */
+    // =====================================================
+    // BASIC VALIDATION
+    // =====================================================
 
-    if (!title || !category) {
+    if (
+      typeof title !== "string" ||
+      !title.trim()
+    ) {
       return NextResponse.json(
         {
           success: false,
-          error: "عنوان و نوع پکیج الزامی است.",
+          error:
+            "عنوان پکیج الزامی است.",
         },
         {
           status: 400,
@@ -35,57 +40,205 @@ export async function POST(req: Request) {
       );
     }
 
-    /* =========================================
-       SLUG
-    ========================================= */
+    if (
+      category !== "general-menu" &&
+      category !==
+        "sub-services-menu"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "نوع پکیج معتبر نیست.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
-    const generatedSlug =
-      slug ||
-      title
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, "-");
+    // =====================================================
+    // SLUG
+    // =====================================================
 
-    /* =========================================
-       CREATE PACKAGE
-    ========================================= */
+    const cleanSlug =
+      typeof slug === "string"
+        ? slug
+            .trim()
+            .toLowerCase()
+            .replace(
+              /[^a-z0-9-]/g,
+              "-"
+            )
+            .replace(/-+/g, "-")
+            .replace(
+              /^-+|-+$/g,
+              ""
+            )
+        : "";
+
+    if (!cleanSlug) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "اسلاگ پکیج الزامی است.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const existingSlug =
+      await Package.findOne({
+        slug: cleanSlug,
+      })
+        .select("_id")
+        .lean();
+
+    if (existingSlug) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "این اسلاگ قبلاً استفاده شده است.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
+    // =====================================================
+    // MENUS ARRAY
+    // =====================================================
+
+    if (
+      !Array.isArray(menus) ||
+      menus.length === 0
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "پکیج باید حداقل یک منوی معتبر داشته باشد.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const normalizedMenuIds = [
+      ...new Set(
+        menus.map((id: any) =>
+          String(id)
+        )
+      ),
+    ];
+
+    /*
+      اگر frontend به هر دلیلی ID تکراری
+      بفرستد، request را رد می‌کنیم.
+    */
+    if (
+      normalizedMenuIds.length !==
+      menus.length
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "شناسه تکراری در لیست منوها وجود دارد.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const allIdsValid =
+      normalizedMenuIds.every(
+        (id) =>
+          mongoose.Types.ObjectId.isValid(
+            id
+          )
+      );
+
+    if (!allIdsValid) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "یک یا چند شناسه منو معتبر نیست.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    // =====================================================
+    // MAKE SURE ALL MENUS EXIST
+    // =====================================================
+
+    const existingMenusCount =
+      await Menu.countDocuments({
+        _id: {
+          $in: normalizedMenuIds,
+        },
+      });
+
+    if (
+      existingMenusCount !==
+      normalizedMenuIds.length
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "یک یا چند منوی ارسالی در دیتابیس وجود ندارد. ساخت پکیج متوقف شد.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    // =====================================================
+    // CREATE PACKAGE
+    // =====================================================
 
     const newPackage =
       await Package.create({
-        title,
+        title: title.trim(),
+
         category,
-        slug: generatedSlug,
 
-        menus: Array.isArray(menus)
-          ? menus
-          : [],
+        slug: cleanSlug,
+
+        menus:
+          normalizedMenuIds,
       });
-
-    /* =========================================
-       POPULATE
-    ========================================= */
 
     const populatedPackage =
       await Package.findById(
         newPackage._id
       ).populate("menus");
 
-    /* =========================================
-       INVALIDATE PUBLIC CACHE
-
-       Package جدید ساخته شده.
-       Navigation و صفحات Public باید
-       اطلاعات جدید را دریافت کنند.
-    ========================================= */
+    // =====================================================
+    // CACHE
+    // =====================================================
 
     revalidateTag(
       "public-packages",
       "max"
     );
 
-    /* =========================================
-       RESPONSE
-    ========================================= */
+    // =====================================================
+    // RESPONSE
+    // =====================================================
 
     return NextResponse.json(
       {
@@ -102,15 +255,32 @@ export async function POST(req: Request) {
       error
     );
 
+    /*
+      اگر روی Schema برای slug unique index داری،
+      این حالت هم duplicate را پوشش می‌دهد.
+    */
+    if (error?.code === 11000) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "این اسلاگ قبلاً استفاده شده است.",
+        },
+        {
+          status: 409,
+        }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
         error:
-          error.message ||
+          error?.message ||
           "خطا در ساخت پکیج",
       },
       {
-        status: 400,
+        status: 500,
       }
     );
   }
