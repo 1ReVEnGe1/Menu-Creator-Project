@@ -1,17 +1,11 @@
 import connectDB from "lib/db";
-
-import { Menu } from "models/Menu";
 import { Package } from "models/Package";
-
-import {
-  NextRequest,
-  NextResponse,
-} from "next/server";
-
-import { revalidateTag } from "next/cache";
+import mongoose from "mongoose";
+import { NextRequest, NextResponse } from "next/server";
+import { revalidatePackageCache } from "utils/revalidatePackageCache";
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   {
     params,
   }: {
@@ -25,91 +19,60 @@ export async function DELETE(
 
     const { id } = await params;
 
-    /* =========================================
-       FIND PACKAGE
-    ========================================= */
+    if (
+      !id ||
+      !mongoose.Types.ObjectId.isValid(id)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "شناسه پکیج معتبر نیست.",
+        },
+        { status: 400 }
+      );
+    }
 
-    const pkg =
-      await Package.findById(id);
+    const pkg = await Package.findById(id)
+      .select("_id title slug")
+      .lean();
 
     if (!pkg) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "پکیج مورد نظر یافت نشد.",
+          message: "پکیج مورد نظر یافت نشد.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
-    /* =========================================
-       DELETE MENUS
-    ========================================= */
+    /*
+      Menuها حذف نمی‌شوند.
+      یک Menu می‌تواند همزمان در چند Package استفاده شود،
+      بنابراین حذف Package نباید داده مشترک را از بین ببرد.
+    */
+    await Package.findByIdAndDelete(id);
 
-    if (
-      pkg.menus &&
-      pkg.menus.length > 0
-    ) {
-      await Menu.deleteMany({
-        _id: {
-          $in: pkg.menus,
-        },
-      });
-    }
-
-    /* =========================================
-       DELETE PACKAGE
-    ========================================= */
-
-    await Package.findByIdAndDelete(
-      id
-    );
-
-    /* =========================================
-       INVALIDATE CACHE
-    ========================================= */
-
-    revalidateTag(
-      "public-packages",
-      "max"
-    );
-
-    /* =========================================
-       RESPONSE
-    ========================================= */
+    revalidatePackageCache(pkg.slug);
 
     return NextResponse.json(
       {
         success: true,
-
         message:
-          "پکیج و تمام منوهای زیرمجموعه آن با موفقیت حذف شدند.",
+          "پکیج حذف شد. منوهای آن برای جلوگیری از حذف داده مشترک حفظ شدند.",
       },
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   } catch (error: any) {
-    console.error(
-      "Delete package error:",
-      error
-    );
+    console.error("Delete package error:", error);
 
     return NextResponse.json(
       {
         success: false,
-
-        message:
-          "خطای سرور در حذف پکیج",
-
+        message: "خطای سرور در حذف پکیج",
         error: error.message,
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

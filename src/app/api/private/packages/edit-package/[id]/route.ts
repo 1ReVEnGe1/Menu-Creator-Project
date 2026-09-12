@@ -1,9 +1,8 @@
 import connectDB from "lib/db";
 import { Package } from "models/Package";
-import { Menu } from "models/Menu";
-import { NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
 import mongoose from "mongoose";
+import { NextResponse } from "next/server";
+import { revalidatePackageCache } from "utils/revalidatePackageCache";
 
 export async function PUT(
   req: Request,
@@ -20,40 +19,21 @@ export async function PUT(
 
     const { id } = await params;
 
-    // =====================================================
-    // PACKAGE ID
-    // =====================================================
-
     if (
       !id ||
-      !mongoose.Types.ObjectId.isValid(
-        id
-      )
+      !mongoose.Types.ObjectId.isValid(id)
     ) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "شناسه پکیج معتبر نیست.",
+          message: "شناسه پکیج معتبر نیست.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     const body = await req.json();
-
-    const {
-      title,
-      category,
-      slug,
-      menus,
-    } = body ?? {};
-
-    // =====================================================
-    // BASIC VALIDATION
-    // =====================================================
+    const { title, category, slug } = body ?? {};
 
     if (
       typeof title !== "string" ||
@@ -62,97 +42,65 @@ export async function PUT(
       return NextResponse.json(
         {
           success: false,
-          message:
-            "عنوان پکیج الزامی است.",
+          message: "عنوان پکیج الزامی است.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
     if (
       category !== "general-menu" &&
-      category !==
-        "sub-services-menu"
+      category !== "sub-services-menu"
     ) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "دسته‌بندی پکیج معتبر نیست.",
+          message: "دسته‌بندی پکیج معتبر نیست.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    // =====================================================
-    // PACKAGE EXISTS?
-    // =====================================================
-
-    const currentPackage =
-      await Package.findById(id)
-        .select("_id menus slug")
-        .lean();
+    const currentPackage = await Package.findById(id)
+      .select("_id slug")
+      .lean();
 
     if (!currentPackage) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "پکیج مورد نظر یافت نشد.",
+          message: "پکیج مورد نظر یافت نشد.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
-
-    // =====================================================
-    // SLUG
-    // =====================================================
 
     const cleanSlug =
       typeof slug === "string"
         ? slug
             .trim()
             .toLowerCase()
-            .replace(
-              /[^a-z0-9-]/g,
-              "-"
-            )
+            .replace(/[^a-z0-9-]/g, "-")
             .replace(/-+/g, "-")
-            .replace(
-              /^-+|-+$/g,
-              ""
-            )
+            .replace(/^-+|-+$/g, "")
         : "";
 
     if (!cleanSlug) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "اسلاگ پکیج الزامی است.",
+          message: "اسلاگ پکیج الزامی است.",
         },
-        {
-          status: 400,
-        }
+        { status: 400 }
       );
     }
 
-    const duplicateSlug =
-      await Package.findOne({
-        slug: cleanSlug,
-
-        _id: {
-          $ne: id,
-        },
-      })
-        .select("_id")
-        .lean();
+    const duplicateSlug = await Package.findOne({
+      slug: cleanSlug,
+      _id: { $ne: id },
+    })
+      .select("_id")
+      .lean();
 
     if (duplicateSlug) {
       return NextResponse.json(
@@ -161,171 +109,21 @@ export async function PUT(
           message:
             "این اسلاگ قبلاً استفاده شده است.",
         },
-        {
-          status: 409,
-        }
-      );
-    }
-
-    // =====================================================
-    // MENUS — VERY IMPORTANT
-    // =====================================================
-
-    /*
-      قبلاً:
-      
-      menus: Array.isArray(menus)
-        ? menus
-        : []
-
-      داشتیم.
-
-      این یعنی request خراب می‌توانست
-      تمام referenceها را پاک کند.
-
-      دیگر اجازه این رفتار را نمی‌دهیم.
-    */
-
-    if (!Array.isArray(menus)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "لیست منوهای پکیج ارسال نشده یا معتبر نیست. بروزرسانی متوقف شد.",
-        },
-        {
-          status: 400,
-        }
+        { status: 409 }
       );
     }
 
     /*
-      UI تو اجازه نمی‌دهد Package
-      بدون Menu داشته باشیم.
-
-      بنابراین [] را هم قبول نمی‌کنیم.
+      مهم: menus عمداً در این endpoint خوانده یا نوشته نمی‌شود.
+      تغییر relation فقط از routeهای package-scoped منو انجام می‌شود.
     */
-    if (menus.length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "پکیج نمی‌تواند بدون منو ذخیره شود. بروزرسانی متوقف شد.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    const normalizedMenuIds = [
-      ...new Set(
-        menus.map((menuId: any) =>
-          String(menuId)
-        )
-      ),
-    ];
-
-    // Duplicate ID
-    if (
-      normalizedMenuIds.length !==
-      menus.length
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "شناسه تکراری در لیست منوهای پکیج وجود دارد.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // ObjectId validation
-    const allIdsValid =
-      normalizedMenuIds.every(
-        (menuId) =>
-          mongoose.Types.ObjectId.isValid(
-            menuId
-          )
-      );
-
-    if (!allIdsValid) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "یک یا چند شناسه منو معتبر نیست. بروزرسانی انجام نشد.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // =====================================================
-    // MAKE SURE ALL MENUS REALLY EXIST
-    // =====================================================
-
-    const existingMenusCount =
-      await Menu.countDocuments({
-        _id: {
-          $in: normalizedMenuIds,
-        },
-      });
-
-    if (
-      existingMenusCount !==
-      normalizedMenuIds.length
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "یک یا چند منوی ارسالی در دیتابیس وجود ندارد. بروزرسانی پکیج متوقف شد.",
-        },
-        {
-          status: 400,
-        }
-      );
-    }
-
-    // =====================================================
-    // IMPORTANT SAFETY CHECK
-    // =====================================================
-
-    /*
-      این check از حالت‌هایی جلوگیری می‌کند که
-      به علت failure تصادفی frontend،
-      ناگهان تعداد زیادی Menu از Package حذف شوند.
-
-      اما حذف آگاهانه یک Menu از UI باید همچنان ممکن باشد.
-
-      بنابراین فعلاً صرفاً صحت IDها را چک می‌کنیم
-      و array معتبر را ذخیره می‌کنیم.
-
-      بعداً اگر Versioning اضافه کردی،
-      می‌توانیم حفاظت قوی‌تر هم اضافه کنیم.
-    */
-
-    // =====================================================
-    // UPDATE
-    // =====================================================
-
     const updatedPackage =
       await Package.findByIdAndUpdate(
         id,
         {
           title: title.trim(),
-
           category,
-
           slug: cleanSlug,
-
-          menus:
-            normalizedMenuIds,
         },
         {
           returnDocument: "after",
@@ -337,75 +135,45 @@ export async function PUT(
       return NextResponse.json(
         {
           success: false,
-          message:
-            "پکیج مورد نظر یافت نشد.",
+          message: "پکیج مورد نظر یافت نشد.",
         },
-        {
-          status: 404,
-        }
+        { status: 404 }
       );
     }
 
-    // =====================================================
-    // CACHE
-    // =====================================================
-
-    revalidateTag(
-      "public-packages",
-      "max"
-    );
-
-    // =====================================================
-    // RESPONSE
-    // =====================================================
+    revalidatePackageCache(currentPackage.slug, cleanSlug);
 
     return NextResponse.json(
       {
         success: true,
-
         message:
-          "پکیج با موفقیت بروزرسانی شد.",
-
+          "مشخصات پکیج با موفقیت بروزرسانی شد.",
         data: updatedPackage,
       },
-      {
-        status: 200,
-      }
+      { status: 200 }
     );
   } catch (error: any) {
-    console.error(
-      "Error updating package:",
-      error
-    );
+    console.error("Error updating package:", error);
 
     if (error?.code === 11000) {
       return NextResponse.json(
         {
           success: false,
-
           message:
             "این اسلاگ قبلاً استفاده شده است.",
         },
-        {
-          status: 409,
-        }
+        { status: 409 }
       );
     }
 
     return NextResponse.json(
       {
         success: false,
-
-        message:
-          "خطای سرور در ویرایش پکیج",
-
+        message: "خطای سرور در ویرایش پکیج",
         error:
-          error?.message ||
-          "Unknown server error",
+          error?.message || "Unknown server error",
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

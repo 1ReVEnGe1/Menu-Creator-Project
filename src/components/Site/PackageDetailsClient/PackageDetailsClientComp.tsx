@@ -264,22 +264,7 @@ export default function PackageDetailsClientComp({
             type="button"
             onClick={() => scrollCategories("right")}
             aria-label="اسکرول به راست"
-            className="
-        hidden md:flex
-        absolute right-2 top-1/2 -translate-y-1/2
-        z-20
-        w-9 h-9
-        items-center justify-center
-        rounded-full
-        bg-[#0a060d]/90
-        border border-white/15
-        text-white
-        backdrop-blur-xl
-        shadow-lg
-        hover:bg-[#85004E]
-        hover:border-[#b5006b]
-        transition-all
-      "
+            className="hidden md:flex absolute right-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-[#0a060d]/90 border border-white/15 text-white backdrop-blur-xl shadow-lg hover:bg-[#85004E] hover:border-[#b5006b] transition-all"
           >
             <svg
               className="w-4 h-4"
@@ -299,15 +284,7 @@ export default function PackageDetailsClientComp({
           {/* Categories */}
           <div
             ref={categoryBarRef}
-            className="
-        flex gap-2.5
-        overflow-x-auto
-        no-scrollbar
-        scroll-smooth
-        px-5
-        md:px-14
-        py-0.5
-      "
+            className="flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth px-5 md:px-14 py-0.5"
           >
             {packages.map((pkg) => {
               const isActive = activePackage._id === pkg._id;
@@ -335,22 +312,7 @@ export default function PackageDetailsClientComp({
             type="button"
             onClick={() => scrollCategories("left")}
             aria-label="اسکرول به چپ"
-            className="
-        hidden md:flex
-        absolute left-2 top-1/2 -translate-y-1/2
-        z-20
-        w-9 h-9
-        items-center justify-center
-        rounded-full
-        bg-[#0a060d]/90
-        border border-white/15
-        text-white
-        backdrop-blur-xl
-        shadow-lg
-        hover:bg-[#85004E]
-        hover:border-[#b5006b]
-        transition-all
-      "
+            className="hidden md:flex absolute left-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-[#0a060d]/90 border border-white/15 text-white backdrop-blur-xl shadow-lg hover:bg-[#85004E] hover:border-[#b5006b] transition-all"
           >
             <svg
               className="w-4 h-4"

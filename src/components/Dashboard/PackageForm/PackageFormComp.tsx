@@ -31,17 +31,30 @@ export interface IPackageInitialData {
 interface PackageFormCompProps {
   mode: "create" | "edit";
   initialData?: IPackageInitialData;
-  onSuccess: () => void;
+  onSuccess: () => void | Promise<void>;
   onClose: () => void;
 }
 
 export default function PackageFormComp({
-  mode,
   initialData,
   onSuccess,
   onClose,
 }: PackageFormCompProps) {
   const [submitting, setSubmitting] = useState(false);
+  const [packageId, setPackageId] = useState<string | undefined>(
+    initialData?._id
+  );
+  const [savingMenuIndex, setSavingMenuIndex] = useState<number | null>(null);
+  const [removingMenuIndex, setRemovingMenuIndex] = useState<number | null>(null);
+  const [dirtyMenuIndexes, setDirtyMenuIndexes] = useState<Set<number>>(
+    () =>
+      new Set(
+        initialData?.menus && initialData.menus.length > 0 ? [] : [0]
+      )
+  );
+
+  const isBusy =
+    submitting || savingMenuIndex !== null || removingMenuIndex !== null;
 
   // =========================================================
   // PACKAGE STATES
@@ -176,7 +189,7 @@ export default function PackageFormComp({
           `/api/private/packages/check-slug?slug=${encodeURIComponent(
             cleanSlug
           )}&currentId=${encodeURIComponent(
-            initialData?._id || ""
+            packageId || ""
           )}`,
           {
             method: "GET",
@@ -251,6 +264,46 @@ export default function PackageFormComp({
   // MENU HELPERS
   // =========================================================
 
+  const markMenuDirty = (index: number) => {
+    setDirtyMenuIndexes((prev) => {
+      const next = new Set(prev);
+      next.add(index);
+      return next;
+    });
+  };
+
+  const clearMenuDirty = (index: number) => {
+    setDirtyMenuIndexes((prev) => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
+  const removeMenuFromLocalState = (index: number) => {
+    setMenus((prev) => prev.filter((_, i) => i !== index));
+
+    setOpenMenuIndexes((prev) =>
+      prev
+        .filter((i) => i !== index)
+        .map((i) => (i > index ? i - 1 : i))
+    );
+
+    setDirtyMenuIndexes((prev) => {
+      const next = new Set<number>();
+
+      prev.forEach((dirtyIndex) => {
+        if (dirtyIndex < index) {
+          next.add(dirtyIndex);
+        } else if (dirtyIndex > index) {
+          next.add(dirtyIndex - 1);
+        }
+      });
+
+      return next;
+    });
+  };
+
   const addMenuField = () => {
     const newIdx = menus.length;
 
@@ -258,49 +311,77 @@ export default function PackageFormComp({
       ...prev,
       {
         title: `منوی شماره ${newIdx + 1}`,
-
         pricingTiers: [
           {
             guestCapacity: "از ۶۰ نفر تا ۱۲۰ نفر",
             price: "",
           },
         ],
-
         items: [
           {
             title: "",
             description: "",
           },
         ],
-
         description: "",
       },
     ]);
 
-    setOpenMenuIndexes((prev) => [
-      ...prev,
-      newIdx,
-    ]);
+    markMenuDirty(newIdx);
+    setOpenMenuIndexes((prev) => [...prev, newIdx]);
   };
 
-  const removeMenuField = (index: number) => {
+  const removeMenuField = async (index: number) => {
+    if (menus.length <= 1) {
+      alert("پکیج باید حداقل یک منو داشته باشد.");
+      return;
+    }
+
+    const menu = menus[index];
     const confirmDeleteMenu = confirm(
-      "مطمئنی که میخوای منو رو از این پکیج حذف کنی؟"
+      menu._id
+        ? "این منو فقط از این پکیج جدا می‌شود و خود منو حذف نخواهد شد. ادامه می‌دهید؟"
+        : "این منوی ذخیره‌نشده از فرم حذف شود؟"
     );
 
     if (!confirmDeleteMenu) {
       return;
     }
 
-    setMenus((prev) =>
-      prev.filter((_, i) => i !== index)
-    );
+    if (!menu._id) {
+      removeMenuFromLocalState(index);
+      return;
+    }
 
-    setOpenMenuIndexes((prev) =>
-      prev
-        .filter((i) => i !== index)
-        .map((i) => (i > index ? i - 1 : i))
-    );
+    if (!packageId) {
+      alert("شناسه پکیج موجود نیست.");
+      return;
+    }
+
+    setRemovingMenuIndex(index);
+
+    try {
+      const res = await fetch(
+        `/api/private/packages/${packageId}/menus/${menu._id}`,
+        { method: "DELETE" }
+      );
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(
+          data?.message || data?.error || "حذف منو از پکیج ناموفق بود."
+        );
+      }
+
+      removeMenuFromLocalState(index);
+      await onSuccess();
+    } catch (error: any) {
+      console.error("Remove menu from package failed:", error);
+      alert(error?.message || "خطا در حذف منو از پکیج");
+    } finally {
+      setRemovingMenuIndex(null);
+    }
   };
 
   const updateMenuField = (
@@ -318,6 +399,8 @@ export default function PackageFormComp({
 
       return updated;
     });
+
+    markMenuDirty(index);
   };
 
   // =========================================================
@@ -343,6 +426,8 @@ export default function PackageFormComp({
 
       return updated;
     });
+
+    markMenuDirty(menuIdx);
   };
 
   const updatePriceTier = (
@@ -370,6 +455,8 @@ export default function PackageFormComp({
 
       return updated;
     });
+
+    markMenuDirty(menuIdx);
   };
 
   const removePriceTier = (
@@ -392,6 +479,8 @@ export default function PackageFormComp({
 
       return updated;
     });
+
+    markMenuDirty(menuIdx);
   };
 
   // =========================================================
@@ -420,6 +509,8 @@ export default function PackageFormComp({
 
       return updated;
     });
+
+    markMenuDirty(menuIdx);
 
     if (shouldFocus) {
       const newMenuItemIdx =
@@ -458,6 +549,8 @@ export default function PackageFormComp({
 
       return updated;
     });
+
+    markMenuDirty(menuIdx);
   };
 
   const removeMenuItem = (
@@ -477,6 +570,8 @@ export default function PackageFormComp({
 
       return updated;
     });
+
+    markMenuDirty(menuIdx);
   };
 
   // =========================================================
@@ -553,6 +648,8 @@ export default function PackageFormComp({
       return updated;
     });
 
+    markMenuDirty(menuIdx);
+
     setTimeout(() => {
       itemInputRefs.current[
         `${menuIdx}-${nextItemIdx}-title`
@@ -561,347 +658,264 @@ export default function PackageFormComp({
   };
 
   // =========================================================
-  // FORM VALIDATION
+  // FORM VALIDATION / PAYLOADS
   // =========================================================
 
-  const validateBeforeSubmit = () => {
+  const validatePackageFields = () => {
     if (!packageTitle.trim()) {
-      throw new Error(
-        "عنوان پکیج را وارد کنید."
-      );
+      throw new Error("عنوان پکیج را وارد کنید.");
     }
 
     if (!packageSlug.trim()) {
-      throw new Error(
-        "اسلاگ پکیج را وارد کنید."
-      );
+      throw new Error("اسلاگ پکیج را وارد کنید.");
     }
-
-    if (menus.length === 0) {
-      throw new Error(
-        "پکیج باید حداقل یک منو داشته باشد."
-      );
-    }
-
-    menus.forEach((menu, index) => {
-      if (!menu.title.trim()) {
-        throw new Error(
-          `عنوان منوی شماره ${
-            index + 1
-          } را وارد کنید.`
-        );
-      }
-
-      const validTiers =
-        menu.pricingTiers.filter(
-          (tier) =>
-            tier.guestCapacity.trim() ||
-            tier.price.trim()
-        );
-
-      if (validTiers.length === 0) {
-        throw new Error(
-          `برای «${menu.title}» حداقل یک سطح قیمت وارد کنید.`
-        );
-      }
-    });
   };
 
+  const validateMenuBeforeSave = (index: number) => {
+    const menu = menus[index];
+
+    if (!menu) {
+      throw new Error("منوی مورد نظر در فرم پیدا نشد.");
+    }
+
+    if (!menu.title.trim()) {
+      throw new Error(`عنوان منوی شماره ${index + 1} را وارد کنید.`);
+    }
+
+    const validTiers = menu.pricingTiers.filter(
+      (tier) => tier.guestCapacity.trim() || tier.price.trim()
+    );
+
+    if (validTiers.length === 0) {
+      throw new Error(
+        `برای «${menu.title}» حداقل یک سطح قیمت وارد کنید.`
+      );
+    }
+
+    const hasIncompleteTier = validTiers.some(
+      (tier) => !tier.guestCapacity.trim() || !tier.price.trim()
+    );
+
+    if (hasIncompleteTier) {
+      throw new Error(
+        `در «${menu.title}» ظرفیت و قیمت هر سطح باید هر دو تکمیل شوند.`
+      );
+    }
+  };
+
+  const buildMenuPayload = (menu: IMenuForm) => ({
+    title: menu.title.trim(),
+    pricingTiers: menu.pricingTiers
+      .filter(
+        (tier) =>
+          tier.guestCapacity.trim() !== "" || tier.price.trim() !== ""
+      )
+      .map((tier) => ({
+        guestCapacity: tier.guestCapacity.trim(),
+        price: tier.price.trim(),
+      })),
+    items: menu.items
+      .filter((item) => item.title.trim() !== "")
+      .map((item) => ({
+        title: item.title.trim(),
+        description: item.description?.trim() || "",
+      })),
+    description: menu.description.trim(),
+  });
+
   // =========================================================
-  // SUBMIT
+  // SINGLE-MENU SAVE
   // =========================================================
 
-  const handleSubmitPackage = async (
-    e: React.FormEvent
-  ) => {
-    e.preventDefault();
-
-    if (submitting) {
+  const handleSaveMenu = async (index: number) => {
+    if (isBusy) {
       return;
     }
 
     try {
-      validateBeforeSubmit();
+      validateMenuBeforeSave(index);
+
+      if (!packageId) {
+        validatePackageFields();
+
+        const isSlugValid = await checkSlugUniqueness();
+        if (!isSlugValid) {
+          return;
+        }
+      }
     } catch (error: any) {
+      alert(error?.message || "اطلاعات منو کامل نیست.");
+      return;
+    }
+
+    const menu = menus[index];
+    const menuPayload = buildMenuPayload(menu);
+
+    setSavingMenuIndex(index);
+
+    try {
+      /*
+        Create mode: اولین Menu همراه خود Package ساخته می‌شود.
+        بنابراین نه Package خالی داریم، نه Menu orphan.
+      */
+      if (!packageId) {
+        const res = await fetch("/api/private/packages/add-package", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: packageTitle.trim(),
+            slug: packageSlug.trim(),
+            category: packageCategory,
+            menu: menuPayload,
+          }),
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok || !data?.success) {
+          throw new Error(
+            data?.message || data?.error || "ساخت پکیج و منو ناموفق بود."
+          );
+        }
+
+        const createdPackageId = data?.data?._id;
+        const createdMenuId = data?.data?.menus?.[0]?._id;
+
+        if (!createdPackageId || !createdMenuId) {
+          throw new Error("شناسه پکیج یا منوی ساخته‌شده از سرور دریافت نشد.");
+        }
+
+        setPackageId(String(createdPackageId));
+        setMenus((prev) =>
+          prev.map((currentMenu, menuIndex) =>
+            menuIndex === index
+              ? { ...currentMenu, _id: String(createdMenuId) }
+              : currentMenu
+          )
+        );
+        clearMenuDirty(index);
+        await onSuccess();
+        alert("پکیج و اولین منو با موفقیت ذخیره شدند.");
+        return;
+      }
+
+      const isExistingMenu = Boolean(menu._id);
+      const url = isExistingMenu
+        ? `/api/private/packages/${packageId}/menus/${menu._id}`
+        : `/api/private/packages/${packageId}/menus`;
+
+      const res = await fetch(url, {
+        method: isExistingMenu ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(menuPayload),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.success) {
+        throw new Error(
+          data?.message || data?.error || `ذخیره «${menu.title}» ناموفق بود.`
+        );
+      }
+
+      const savedMenuId = data?.data?._id || menu._id;
+
+      if (!savedMenuId) {
+        throw new Error(`شناسه «${menu.title}» از سرور دریافت نشد.`);
+      }
+
+      setMenus((prev) =>
+        prev.map((currentMenu, menuIndex) =>
+          menuIndex === index
+            ? { ...currentMenu, _id: String(savedMenuId) }
+            : currentMenu
+        )
+      );
+
+      clearMenuDirty(index);
+      await onSuccess();
+      alert(`«${menu.title}» با موفقیت ذخیره شد.`);
+    } catch (error: any) {
+      console.error("Single menu save failed:", error);
+      alert(error?.message || "خطایی در ذخیره منو رخ داد.");
+    } finally {
+      setSavingMenuIndex(null);
+    }
+  };
+
+  // =========================================================
+  // PACKAGE METADATA SAVE
+  // =========================================================
+
+  const handleSubmitPackage = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isBusy) {
+      return;
+    }
+
+    if (!packageId) {
       alert(
-        error?.message ||
-          "اطلاعات فرم کامل نیست."
+        "برای ایجاد پکیج، ابتدا یکی از منوها را با دکمه «ذخیره این منو» ثبت کنید."
       );
       return;
     }
 
-    /*
-      اسلاگ را درست قبل از Save دوباره بررسی می‌کنیم.
-      بنابراین فقط به onBlur کاربر وابسته نیستیم.
-    */
-    const isSlugValid =
-      await checkSlugUniqueness();
+    try {
+      validatePackageFields();
+    } catch (error: any) {
+      alert(error?.message || "اطلاعات پکیج کامل نیست.");
+      return;
+    }
 
+    const isSlugValid = await checkSlugUniqueness();
     if (!isSlugValid) {
       return;
     }
 
     setSubmitting(true);
 
-    /*
-      Snapshot محلی می‌سازیم.
-      اگر Menu جدید ساخته شود، ID برگشتی را هم
-      داخل این snapshot و هم React state ذخیره می‌کنیم.
-    */
-    let workingMenus: IMenuForm[] =
-      menus.map((menu) => ({
-        ...menu,
-
-        pricingTiers:
-          menu.pricingTiers.map(
-            (tier) => ({
-              ...tier,
-            })
-          ),
-
-        items: menu.items.map(
-          (item) => ({
-            ...item,
-          })
-        ),
-      }));
-
     try {
-      const processedMenuIds: string[] =
-        [];
-
-      // =====================================================
-      // SAVE MENUS
-      // =====================================================
-
-      for (
-        let menuIndex = 0;
-        menuIndex <
-        workingMenus.length;
-        menuIndex++
-      ) {
-        const menu =
-          workingMenus[menuIndex];
-
-        const isEditMenu = Boolean(
-          menu._id
-        );
-
-        const menuUrl = isEditMenu
-          ? `/api/private/menus/edit-menu/${menu._id}`
-          : "/api/private/menus/add-menu";
-
-        const menuMethod = isEditMenu
-          ? "PUT"
-          : "POST";
-
-        const cleanItems =
-          menu.items
-            .filter(
-              (item) =>
-                item.title.trim() !== ""
-            )
-            .map((item) => ({
-              title: item.title.trim(),
-              description:
-                item.description?.trim() ||
-                "",
-            }));
-
-        const cleanTiers =
-          menu.pricingTiers
-            .filter(
-              (tier) =>
-                tier.guestCapacity.trim() !==
-                  "" ||
-                tier.price.trim() !== ""
-            )
-            .map((tier) => ({
-              guestCapacity:
-                tier.guestCapacity.trim(),
-              price: tier.price.trim(),
-            }));
-
-        const resMenu = await fetch(
-          menuUrl,
-          {
-            method: menuMethod,
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              title: menu.title.trim(),
-
-              pricingTiers:
-                cleanTiers,
-
-              items: cleanItems,
-
-              description:
-                menu.description.trim(),
-            }),
-          }
-        );
-
-        const menuData =
-          await resMenu
-            .json()
-            .catch(() => null);
-
-        /*
-          حیاتی:
-          اگر حتی یک Menu ذخیره نشد،
-          Package به هیچ عنوان Update نمی‌شود.
-        */
-        if (
-          !resMenu.ok ||
-          !menuData?.success
-        ) {
-          throw new Error(
-            menuData?.message ||
-              menuData?.error ||
-              `ذخیره «${menu.title}» ناموفق بود.`
-          );
-        }
-
-        const savedMenuId =
-          menuData?.data?._id ||
-          menu._id;
-
-        if (!savedMenuId) {
-          throw new Error(
-            `شناسه «${menu.title}» از سرور دریافت نشد.`
-          );
-        }
-
-        processedMenuIds.push(
-          String(savedMenuId)
-        );
-
-        /*
-          اگر Menu جدید بوده، ID برگشتی را
-          داخل state نگه می‌داریم.
-
-          اگر بعداً Package API fail شود،
-          Submit بعدی دوباره این Menu را POST نمی‌کند.
-        */
-        if (!menu._id) {
-          workingMenus =
-            workingMenus.map(
-              (currentMenu, index) =>
-                index === menuIndex
-                  ? {
-                      ...currentMenu,
-                      _id: String(
-                        savedMenuId
-                      ),
-                    }
-                  : currentMenu
-            );
-
-          setMenus(workingMenus);
-        }
-      }
-
-      /*
-        Safety check سمت Client.
-        اگر به هر دلیلی تعداد IDهای پردازش‌شده
-        با تعداد Menuها یکی نباشد،
-        Package را ذخیره نمی‌کنیم.
-      */
-      if (
-        processedMenuIds.length !==
-        workingMenus.length
-      ) {
-        throw new Error(
-          "تعداد منوهای ذخیره‌شده با منوهای فرم مطابقت ندارد. ذخیره پکیج متوقف شد."
-        );
-      }
-
-      // =====================================================
-      // SAVE PACKAGE
-      // =====================================================
-
-      const pkgUrl =
-        mode === "create"
-          ? "/api/private/packages/add-package"
-          : `/api/private/packages/edit-package/${initialData?._id}`;
-
-      const pkgMethod =
-        mode === "create"
-          ? "POST"
-          : "PUT";
-
-      if (
-        mode === "edit" &&
-        !initialData?._id
-      ) {
-        throw new Error(
-          "شناسه پکیج برای ویرایش موجود نیست."
-        );
-      }
-
-      const resPkg = await fetch(
-        pkgUrl,
+      const res = await fetch(
+        `/api/private/packages/edit-package/${packageId}`,
         {
-          method: pkgMethod,
-
+          method: "PUT",
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
-            title:
-              packageTitle.trim(),
-
-            slug:
-              packageSlug.trim(),
-
-            category:
-              packageCategory,
-
-            menus:
-              processedMenuIds,
+            title: packageTitle.trim(),
+            slug: packageSlug.trim(),
+            category: packageCategory,
           }),
         }
       );
 
-      const packageData =
-        await resPkg
-          .json()
-          .catch(() => null);
+      const data = await res.json().catch(() => null);
 
-      if (
-        !resPkg.ok ||
-        !packageData?.success
-      ) {
+      if (!res.ok || !data?.success) {
         throw new Error(
-          packageData?.message ||
-            packageData?.error ||
-            "خطا در ذخیره پکیج"
+          data?.message || data?.error || "خطا در ذخیره مشخصات پکیج"
         );
       }
 
-      /*
-        فقط وقتی همه Menuها + خود Package
-        با موفقیت ذخیره شدند فرم بسته می‌شود.
-      */
-      onSuccess();
-      onClose();
-    } catch (err: any) {
-      console.error(
-        "Package submit failed:",
-        err
-      );
+      await onSuccess();
 
-      alert(
-        err?.message ||
-          "خطایی در ذخیره اطلاعات رخ داد. اطلاعات فرم حذف نشده است؛ دوباره تلاش کنید."
-      );
+      if (dirtyMenuIndexes.size > 0) {
+        alert(
+          "مشخصات پکیج ذخیره شد؛ اما بعضی منوها تغییرات ذخیره‌نشده دارند. هر منو را جداگانه ذخیره کنید."
+        );
+        return;
+      }
+
+      onClose();
+    } catch (error: any) {
+      console.error("Package metadata save failed:", error);
+      alert(error?.message || "خطایی در ذخیره مشخصات پکیج رخ داد.");
     } finally {
       setSubmitting(false);
     }
@@ -922,7 +936,7 @@ export default function PackageFormComp({
         تا وسط عملیات، state تغییر نکند.
       */}
       <fieldset
-        disabled={submitting}
+        disabled={isBusy}
         className="space-y-6 sm:space-y-8 border-0 p-0 m-0 min-w-0 disabled:opacity-80"
       >
         {/* =====================================================
@@ -1032,6 +1046,10 @@ export default function PackageFormComp({
         ====================================================== */}
 
         <div className="space-y-4">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-[11px] sm:text-xs text-amber-800 leading-6">
+            هر منو مستقل ذخیره می‌شود. ویرایش یا ثبت یک منو، هیچ منوی دیگری را ارسال یا بازنویسی نمی‌کند. حذف، فقط ارتباط منو با همین پکیج را قطع می‌کند. اگر یک منو بین چند پکیج مشترک باشد، ویرایش محتوای آن در همه پکیج‌های استفاده‌کننده دیده می‌شود.
+          </div>
+
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <h3 className="text-slate-700 text-sm font-bold">
@@ -1132,6 +1150,18 @@ export default function PackageFormComp({
                         }{" "}
                         آیتم)
                       </span>
+
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${
+                          dirtyMenuIndexes.has(mIdx)
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}
+                      >
+                        {dirtyMenuIndexes.has(mIdx)
+                          ? "ذخیره‌نشده"
+                          : "ذخیره‌شده"}
+                      </span>
                     </div>
 
                     <div
@@ -1151,7 +1181,9 @@ export default function PackageFormComp({
                           }
                           className="text-red-500 text-xs hover:underline"
                         >
-                          حذف منو
+                          {removingMenuIndex === mIdx
+                            ? "در حال حذف..."
+                            : "حذف از پکیج"}
                         </button>
                       )}
 
@@ -1501,6 +1533,40 @@ export default function PackageFormComp({
                           جدید
                         </button>
                       </div>
+
+                      <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                        <p className="text-[11px] text-slate-400 leading-5">
+                          {menu._id
+                            ? "این دکمه فقط همین منو را بروزرسانی می‌کند."
+                            : packageId
+                            ? "این دکمه فقط همین منوی جدید را به پکیج اضافه می‌کند."
+                            : "اولین ذخیره، پکیج و همین یک منو را با هم ایجاد می‌کند."}
+                        </p>
+
+                        <button
+                          type="button"
+                          onClick={() => handleSaveMenu(mIdx)}
+                          disabled={
+                            isBusy ||
+                            !dirtyMenuIndexes.has(mIdx) ||
+                            (!packageId && mIdx !== 0)
+                          }
+                          className="w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs text-white font-bold shadow-sm disabled:opacity-45 disabled:cursor-not-allowed"
+                          style={{ backgroundColor: "#85004E" }}
+                        >
+                          {savingMenuIndex === mIdx
+                            ? "در حال ذخیره این منو..."
+                            : !dirtyMenuIndexes.has(mIdx)
+                            ? "این منو ذخیره شده"
+                            : !packageId && mIdx !== 0
+                            ? "ابتدا منوی اول را ذخیره کنید"
+                            : menu._id
+                            ? "ذخیره تغییرات این منو"
+                            : packageId
+                            ? "ثبت این منو"
+                            : "ایجاد پکیج و ثبت این منو"}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1517,7 +1583,7 @@ export default function PackageFormComp({
       <div className="pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3">
         <button
           type="button"
-          disabled={submitting}
+          disabled={isBusy}
           onClick={onClose}
           className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-xl border border-slate-200 text-xs text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
         >
@@ -1527,9 +1593,10 @@ export default function PackageFormComp({
         <button
           type="submit"
           disabled={
-            submitting ||
+            isBusy ||
             checkingSlug ||
-            Boolean(slugError)
+            Boolean(slugError) ||
+            !packageId
           }
           className="w-full sm:w-auto px-8 py-2.5 sm:py-3 rounded-xl text-xs text-white shadow-lg disabled:opacity-50 font-bold"
           style={{
@@ -1537,12 +1604,12 @@ export default function PackageFormComp({
           }}
         >
           {submitting
-            ? "در حال ذخیره..."
+            ? "در حال ذخیره مشخصات..."
             : checkingSlug
             ? "در حال بررسی..."
-            : mode === "create"
-            ? "ثبت و انتشار کامل پکیج"
-            : "ذخیره تغییرات پکیج"}
+            : !packageId
+            ? "ابتدا یک منو را ذخیره کنید"
+            : "ذخیره مشخصات پکیج"}
         </button>
       </div>
     </form>
